@@ -4,16 +4,7 @@ import static edu.wpi.first.units.Units.Volts;
 
 import java.util.function.DoubleSupplier;
 
-import com.ctre.phoenix6.CANBus;
-import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.VelocityVoltage;
-import com.ctre.phoenix6.controls.VoltageOut;
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.MotorAlignmentValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
+import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -21,71 +12,33 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 public class Shooter extends SubsystemBase {
-    // Shooter has 2 motors that runs the shooters, they are opposed - we have one follow the other
-    private final TalonFX leadShoot;
-    private final TalonFX followShoot;
+    private final ShooterIO io;
+    private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
-    private final VoltageOut m_sysIdControl = new VoltageOut(0);
+    /** We store the target RPS here so the plus/minus buttons work correctly */
+    private double setpoint = 0.0;
 
     /**
      * NOT bound to any button by default -- run this deliberately, with someone watching
      * the flywheel and a hand on the E-stop, not mid-match. See docs/characterization.md.
      * Ramp/step voltage are kept conservative since this is a heavy flywheel, not a drivetrain.
      */
-    private final SysIdRoutine m_sysIdRoutine;
+    private final SysIdRoutine m_sysIdRoutine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            null,        // default ramp rate (1 V/s)
+            Volts.of(4), // reduced dynamic step to avoid slamming the flywheel to full speed
+            null,        // default timeout (10 s)
+            state -> Logger.recordOutput("Shooter/SysIdState", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+            voltage -> runVolts(voltage.in(Volts)),
+            null, // no log consumer -- AdvantageKit already records everything via updateInputs
+            this
+        )
+    );
 
-    /** We store the target RPS here so the plus/minus buttons work correctly */
-    private double setpoint = 0.0;
-
-    // Configs for the 2 motors and their PID settings
-    public Shooter(CANBus canbus) {
-        // On the Canbus UPPER
-        leadShoot = new TalonFX(27, canbus);
-        followShoot = new TalonFX(15, canbus);
-
-        m_sysIdRoutine = new SysIdRoutine(
-            new SysIdRoutine.Config(
-                null,        // default ramp rate (1 V/s)
-                Volts.of(4), // reduced dynamic step to avoid slamming the flywheel to full speed
-                null,        // default timeout (10 s)
-                state -> SignalLogger.writeString("SysIdShooter_State", state.toString())
-            ),
-            new SysIdRoutine.Mechanism(
-                voltage -> leadShoot.setControl(m_sysIdControl.withOutput(voltage.in(Volts))),
-                null,
-                this
-            )
-        );
-
-        // --- LEAD SHOOTER CONFIG ---
-        TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
-        shooterConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast; // Coast is safer for heavy flywheels
-        
-        // PID Configuration
-        shooterConfig.Slot0.kP = 0.4; 
-        shooterConfig.Slot0.kI = 0.0;
-        shooterConfig.Slot0.kD = 0.0005;
-        shooterConfig.Slot0.kV = 0.16;
-        shooterConfig.Slot0.kS = 0.0;
-        
-        leadShoot.getConfigurator().apply(shooterConfig);
-
-        // --- SHOOTER CONFIG ---
-        Slot0Configs shooterPID = new Slot0Configs();
-        shooterPID.kP = .8; // Changed to 2.0 for smoother recovery
-        shooterPID.kI = 0.0;
-        shooterPID.kD = 0; //.0005
-        shooterPID.kV = 0.145; // .16
-        shooterPID.kS = 0;
-        //shooterPID.kA = 1.0;
-        
-        leadShoot.getConfigurator().apply(shooterPID);
-        //followShoot.getConfigurator().apply(shooterPID);
-
-        TalonFXConfiguration shooterfollowConfig = new TalonFXConfiguration();
-        shooterfollowConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        followShoot.getConfigurator().apply(shooterfollowConfig);
-        followShoot.setControl(new Follower(27, MotorAlignmentValue.Opposed));
+    public Shooter(ShooterIO io) {
+        this.io = io;
     }
 
     /** Checks if the shooter is up to speed and ready to fire */
@@ -94,31 +47,29 @@ public class Shooter extends SubsystemBase {
         if (setpoint == 0.0) {
             return false;
         }
-
-        // Get the current speed
-        double currentRPS = leadShoot.getVelocity().getValueAsDouble();
-
-        // Check if the current speed is within the given RPS range of our target
-        return Math.abs(currentRPS - setpoint) <= range;
+        return Math.abs(inputs.velocityRPS - setpoint) <= range;
     }
 
     /** Updates the targetRPS and sends it to the shooter */
     public void goShoot(double RPS) {
         this.setpoint = RPS;
-        VelocityVoltage velocityRequest = new VelocityVoltage(setpoint).withSlot(0);
-        leadShoot.setControl(velocityRequest);
+        io.setVelocity(setpoint);
     }
 
     /** Adds the given RPS to the shooter's current setpoint. */
     public void incrementVelocityBy(double RPS) {
         this.setpoint += RPS;
-        VelocityVoltage velocityRequest = new VelocityVoltage(setpoint).withSlot(0);
-        leadShoot.setControl(velocityRequest);
+        io.setVelocity(setpoint);
     }
 
     public void stop() {
         setpoint = 0.0; // Reset target speed
-        leadShoot.stopMotor(); // Safely cuts power to the motor rather than commanding 0 RPS closed-loop
+        io.stop();
+    }
+
+    /** Open-loop voltage control, used by the SysId routine. */
+    public void runVolts(double volts) {
+        io.setVoltage(volts);
     }
 
     /** * Returns a command that drives the shooter, then stops it at command end.
@@ -144,8 +95,11 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Shooter/Velocity_RPS", leadShoot.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter/Target_Velocity_RPS", setpoint); 
-        SmartDashboard.putBoolean("Shooter/Ready", isShooterReady(2)); 
-    }   
+        io.updateInputs(inputs);
+        Logger.processInputs("Shooter", inputs);
+
+        SmartDashboard.putNumber("Shooter/Velocity_RPS", inputs.velocityRPS);
+        SmartDashboard.putNumber("Shooter/Target_Velocity_RPS", setpoint);
+        SmartDashboard.putBoolean("Shooter/Ready", isShooterReady(2));
+    }
 }

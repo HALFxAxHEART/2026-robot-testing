@@ -3,13 +3,7 @@ package frc.robot.subsystems;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import com.ctre.phoenix6.CANBus;
-// CTRE Phoenix 6 Imports
-import com.ctre.phoenix6.configs.TalonFXSConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
-import com.ctre.phoenix6.hardware.TalonFXS;
-import com.ctre.phoenix6.signals.MotorArrangementValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
+import org.littletonrobotics.junction.Logger;
 
 // WPILib Imports
 import edu.wpi.first.math.geometry.Pose2d;
@@ -31,36 +25,36 @@ public class Turret extends SubsystemBase {
     private Mode m_mode = Mode.SHOOTING;
 
     // --- Hardware & Control ---
-    private final TalonFXS m_turretMotor;
-    private final MotionMagicVoltage m_motionMagic;
+    private final TurretIO io;
+    private final TurretIOInputsAutoLogged inputs = new TurretIOInputsAutoLogged();
 
     // --- External Dependencies ---
     private final Supplier<Pose2d> m_robotPoseSupplier;
     private final Supplier<ChassisSpeeds> m_robotVelocitySupplier;
 
     // --- ABSOLUTE FIELD TARGETS (THE GRID/HUB) ---
-    private final Translation2d kBlueTargetCenter = new Translation2d(0.0, 4.105); 
-    private final Translation2d kRedTargetCenter = new Translation2d(16.54, 4.105); 
+    private final Translation2d kBlueTargetCenter = new Translation2d(0.0, 4.105);
+    private final Translation2d kRedTargetCenter = new Translation2d(16.54, 4.105);
 
     // --- PHYSICAL TURRET OFFSET ---
     private final double kTurretOffsetXInches = -5; // Backwards
     private final double kTurretOffsetYInches = -6;  // Right
 
     private final Translation2d m_robotRelativeTurretOffset = new Translation2d(
-        Units.inchesToMeters(kTurretOffsetXInches), 
+        Units.inchesToMeters(kTurretOffsetXInches),
         Units.inchesToMeters(kTurretOffsetYInches)
     );
 
     // NEW: Flips the direction if the turret is mirroring the target (turns left when target is right)
-    private final double kTurretDirectionMultiplier = -1.0; 
+    private final double kTurretDirectionMultiplier = -1.0;
 
     // Adjust this until 0 motor rotations is perfectly facing backward.
     // Try 90.0, 180.0, or 270.0 now that the direction is fixed.
     private final Rotation2d kTurretZeroOffset = Rotation2d.fromDegrees(0.0);
 
     // --- TARGET OFFSET CORRECTION ---
-    private final double kTargetCenterOffsetXInches = 0.0; 
-    private final double kTargetCenterOffsetYInches = 0.0;  
+    private final double kTargetCenterOffsetXInches = 0.0;
+    private final double kTargetCenterOffsetYInches = 0.0;
 
     // --- Mechanical Constants ---
     private final double kTurretRingTeeth = 200.0;
@@ -95,30 +89,14 @@ public class Turret extends SubsystemBase {
     public double m_virtualDistanceToHubMeters = 0.0;
     private double m_targetMotorRotations = 0.0;
 
-    public Turret(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> velocitySupplier, CANBus canbus) {
+    public Turret(TurretIO io, Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> velocitySupplier) {
+        this.io = io;
         this.m_robotPoseSupplier = poseSupplier;
-        this.m_robotVelocitySupplier = velocitySupplier; 
-
-        m_turretMotor = new TalonFXS(16, canbus); 
-        m_motionMagic = new MotionMagicVoltage(0);
-
-        TalonFXSConfiguration config = new TalonFXSConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.Commutation.MotorArrangement = MotorArrangementValue.Minion_JST;
-        config.Slot0.kP = 8; 
-        config.Slot0.kD = 0;
-        config.Slot0.kS = 0;
-        
-        config.MotionMagic.MotionMagicCruiseVelocity = 600.0; 
-        config.MotionMagic.MotionMagicAcceleration = 60.0;   
-        config.MotionMagic.MotionMagicJerk = 1600.0;          
-
-        m_turretMotor.getConfigurator().apply(config);
-        m_turretMotor.setPosition(0);
+        this.m_robotVelocitySupplier = velocitySupplier;
     }
 
     public void zeroTurret() {
-        m_turretMotor.setPosition(0.0);
+        io.setZeroPosition();
     }
 
     public double getDistanceToHubMeters() {
@@ -138,23 +116,22 @@ public class Turret extends SubsystemBase {
     }
 
     public void alignToHub() {
-        m_turretMotor.setControl(m_motionMagic.withPosition(m_targetMotorRotations));
+        io.setMotionMagicPosition(m_targetMotorRotations);
     }
 
     public void goToZero() {
-        m_turretMotor.setControl(m_motionMagic.withPosition(0));
+        io.setMotionMagicPosition(0);
     }
 
     public boolean isTurretReady(){
         if (m_targetMotorRotations == 0.0) {
             return false;
         }
-        double currentpos = m_turretMotor.getPosition().refresh().getValueAsDouble();
-        return Math.abs(currentpos - m_targetMotorRotations) <= 0.2;
+        return Math.abs(inputs.positionMotorRotations - m_targetMotorRotations) <= 0.2;
     }
 
     public void passOrShoot() {
-        m_turretMotor.setControl(m_motionMagic.withPosition(m_targetMotorRotations));
+        io.setMotionMagicPosition(m_targetMotorRotations);
     }
 
     private boolean isRedAlliance() {
@@ -165,9 +142,10 @@ public class Turret extends SubsystemBase {
     @Override
     public void periodic() {
         // --- LIVE MOTOR DATA ---
-        double currentMotorRotations = m_turretMotor.getPosition().refresh().getValueAsDouble();
-        SmartDashboard.putNumber("Turret/Current_Motor_Rots", currentMotorRotations);
-        SmartDashboard.putNumber("Turret/Current_Turret_Rots", currentMotorRotations / kTurretGearRatio);
+        io.updateInputs(inputs);
+        Logger.processInputs("Turret", inputs);
+        SmartDashboard.putNumber("Turret/Current_Motor_Rots", inputs.positionMotorRotations);
+        SmartDashboard.putNumber("Turret/Current_Turret_Rots", inputs.positionMotorRotations / kTurretGearRatio);
 
         // --- SOLVE FOR THE AIM SOLUTION (pure math, see TurretAimCalculator) ---
         Pose2d robotPose = m_robotPoseSupplier.get();

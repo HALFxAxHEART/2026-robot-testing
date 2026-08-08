@@ -7,9 +7,8 @@ the robot -- that's the point of writing it down instead of guessing.
 
 ## 1. SysId characterization (Shooter, Hood)
 
-`Shooter` and `Hood` each have a `SysIdRoutine` wired up (same pattern the drivetrain
-already uses in `CommandSwerveDrivetrain`), exposing `sysIdQuasistatic(direction)` and
-`sysIdDynamic(direction)` Commands. They are **not bound to any button** on purpose --
+`Shooter` and `Hood` each have a `SysIdRoutine` wired up, exposing `sysIdQuasistatic(direction)`
+and `sysIdDynamic(direction)` Commands. They are **not bound to any button** on purpose --
 running a SysId sweep mid-match would be bad. Wire them up temporarily.
 
 ### Before you run anything
@@ -35,20 +34,23 @@ running a SysId sweep mid-match would be bad. Wire them up temporarily.
 2. Enable **Test mode** in the Driver Station, run each of the four directions once
    (quasistatic forward, quasistatic reverse, dynamic forward, dynamic reverse), letting
    each finish or timeout on its own. Disable between each one.
-3. The routines log via CTRE's `SignalLogger` (the same one the drivetrain SysId already
-   uses), so pull the log the same way you already do for drivetrain characterization:
-   Phoenix Tuner X → Log Extractor, convert the `.hoot` to `.wpilog`, then open it in the
-   WPILib **SysId** tool (in the WPILib tools suite) and pick the mechanism type
-   (Simple/Elevator/Arm -- Shooter is a flywheel so use Simple; Hood may need Arm if
-   gravity torque matters for it).
+3. The robot logs everything through AdvantageKit now (see `docs/advantagekit.md`), so
+   pull the `.wpilog` off the USB stick (or grab it from NetworkTables live via
+   AdvantageScope if you were connected). **Do not feed this file to the SysId analyzer
+   directly** -- AdvantageKit only logs changed values, not one sample per loop, which
+   the SysId tool doesn't understand. Instead, open the log in AdvantageScope (v3.0.2+),
+   File → "Export Data...", format "WPILOG", timestamps "AdvantageKit Cycles" (only export
+   the `Shooter`/`Hood` prefixes to keep the file small), then open *that* exported file in
+   the WPILib **SysId** analyzer tool and pick the mechanism type (Simple/Elevator/Arm --
+   Shooter is a flywheel so use Simple; Hood may need Arm if gravity torque matters for it).
 4. SysId will output `kS`, `kV`, `kA` (and `kG` if you used Arm/Elevator). Plug those into:
-   - `Shooter.java` -- the `Slot0Configs`/`shooterConfig.Slot0` block in the constructor.
-   - `Hood.java` -- the `hoodPID` block in the constructor.
+   - `subsystems/ShooterIOTalonFX.java` -- the `Slot0Configs`/`shooterConfig.Slot0` block.
+   - `subsystems/HoodIOTalonFX.java` -- the `hoodPID` block.
 5. Remove the temporary button bindings before you ship the change.
 
 ## 2. EvilIntake soft limits
 
-`EvilIntake.java` currently sets:
+`subsystems/EvilIntakeIOTalonFX.java` currently sets:
 ```java
 intakeConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = EvilIntakePosition.out.getAngle() + 0.5;
 intakeConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = EvilIntakePosition.in.getAngle() - 0.1;
@@ -70,8 +72,8 @@ To get real numbers:
    on what step 2 found) to that position minus a safety margin (a few percent of the
    full range, not fixed to `+0.5`).
 4. Repeat for the stowed ("in") hard stop.
-5. Update the two threshold lines in `EvilIntake.java` with the real values and delete
-   the "these margins are a guess" comment once they're verified.
+5. Update the two threshold lines in `EvilIntakeIOTalonFX.java` with the real values and
+   delete the "these margins are a guess" comment once they're verified.
 6. While you're in there: the stator current limit comment says "5 Amps" but the code
    sets 40A -- decide what you actually want it to do when the intake hits a piece or a
    finger, and make the comment and the number agree.

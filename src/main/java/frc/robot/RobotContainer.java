@@ -23,16 +23,27 @@ import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.Constants.EvilIntakePosition;
+import frc.robot.Constants.Mode;
 import frc.robot.commands.AutonContainer;
 import frc.robot.commands.EvilIntakePiece;
 import frc.robot.commands.theYappy;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.EvilIntake;
+import frc.robot.subsystems.EvilIntakeIO;
+import frc.robot.subsystems.EvilIntakeIOTalonFX;
 import frc.robot.subsystems.Hood;
-import frc.robot.subsystems.Shooter;
+import frc.robot.subsystems.HoodIO;
+import frc.robot.subsystems.HoodIOTalonFX;
 import frc.robot.subsystems.RollerSystem;
+import frc.robot.subsystems.RollerSystemIO;
+import frc.robot.subsystems.RollerSystemIOTalonFX;
+import frc.robot.subsystems.Shooter;
+import frc.robot.subsystems.ShooterIO;
+import frc.robot.subsystems.ShooterIOTalonFX;
 import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.TurretIO;
+import frc.robot.subsystems.TurretIOTalonFXS;
 import frc.robot.wrappers.Limelight;
 
 public class RobotContainer {
@@ -53,16 +64,23 @@ public class RobotContainer {
     // --- SWERVE DRIVE VARIABLES END ---
 
     // --- TURRET VARIABLES START ---
-    public final Hood hood = new Hood(upper);
-    public final EvilIntake evilIntake = new EvilIntake(11, 12, upper);//spin ID should be set to 12
-    public final Shooter shooter = new Shooter(upper);
-    public final RollerSystem rollersystem = new RollerSystem(upper);
-    
+    // AdvantageKit: real hardware IO on the RIO, dummy (no-op) IO everywhere else -- this
+    // also covers REPLAY mode, where inputs come from the log, not from touching hardware.
+    public final Hood hood = new Hood(
+        Constants.currentMode == Mode.REAL ? new HoodIOTalonFX(upper) : new HoodIO() {});
+    public final EvilIntake evilIntake = new EvilIntake(
+        Constants.currentMode == Mode.REAL ? new EvilIntakeIOTalonFX(11, 12, upper) : new EvilIntakeIO() {},
+        11); //spin ID should be set to 12
+    public final Shooter shooter = new Shooter(
+        Constants.currentMode == Mode.REAL ? new ShooterIOTalonFX(upper) : new ShooterIO() {});
+    public final RollerSystem rollersystem = new RollerSystem(
+        Constants.currentMode == Mode.REAL ? new RollerSystemIOTalonFX(upper) : new RollerSystemIO() {});
+
     // SOTM UPDATE: Passing Pose and Speeds (Removed FieldLayout)
     public final Turret turret = new Turret(
-            () -> drivetrain.getState().Pose, 
-            () -> drivetrain.getState().Speeds,
-            upper
+            Constants.currentMode == Mode.REAL ? new TurretIOTalonFXS(upper) : new TurretIO() {},
+            () -> drivetrain.getState().Pose,
+            () -> drivetrain.getState().Speeds
         );
 
     final AutonContainer auton = new AutonContainer(this); 

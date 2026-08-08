@@ -12,12 +12,31 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.generated.TunerConstants;
 
 public class Constants {
 
             public static final String Jarvis = "Jarvis";
             public static final String Upper = "Upper";
+
+    /**
+     * AdvantageKit run mode. REAL is picked automatically on the roboRIO. When not real,
+     * this defaults to SIM (normal desktop simulation, physics-driven, no log required) --
+     * flip {@code simMode} to REPLAY only when you deliberately want to replay a saved log
+     * through the current code (see docs/characterization.md-style workflows, or AdvantageKit's
+     * own replay docs). RobotContainer uses this (not RobotBase.isReal()) to decide whether to
+     * build real or dummy hardware IO, since REPLAY must also use dummy IO -- its inputs come
+     * from the log, not from touching hardware.
+     */
+    public enum Mode {
+        REAL,
+        SIM,
+        REPLAY
+    }
+
+    private static final Mode simMode = Mode.SIM;
+    public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
 
 /* -------------- DRIVETRAIN CONSTANTS -------------- */
 

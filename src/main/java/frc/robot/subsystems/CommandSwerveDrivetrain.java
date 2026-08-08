@@ -5,6 +5,8 @@ import static edu.wpi.first.units.Units.Volts;
 
 import java.util.function.Supplier;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
@@ -247,6 +249,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     @Override
     public void periodic() {
         SmartDashboard.putNumber("robot yaw", getgyroyaw().getDegrees());
+
+        // AdvantageKit output logging. This drivetrain is CTRE-generated (TunerSwerveDrivetrain),
+        // which doesn't decompose cleanly into the IO-interface pattern used by the other
+        // subsystems -- reimplementing its control loop would be a much larger, riskier
+        // change than logging its outputs. Recording pose/speeds/module state here still
+        // gets full AdvantageScope visibility, just without full replay support for the
+        // drivetrain specifically (replay of the other subsystems still works normally).
+        var state = getState();
+        Logger.recordOutput("Drivetrain/Pose", state.Pose);
+        Logger.recordOutput("Drivetrain/Speeds", state.Speeds);
+        Logger.recordOutput("Drivetrain/ModuleStates", state.ModuleStates);
+        Logger.recordOutput("Drivetrain/ModuleTargets", state.ModuleTargets);
         /*
          * Periodically try to apply the operator perspective.
          * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
