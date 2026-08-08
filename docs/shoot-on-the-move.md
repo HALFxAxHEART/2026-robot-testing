@@ -38,20 +38,33 @@ point" approximates the true correction.
 in physical units -- ball exit speed in m/s and launch angle in degrees, as functions of
 distance. What this repo has instead is `ShootingMath.shooterRPSForDistance()` and
 `hoodAngleForDistance()`, which map distance directly to motor units (RPS, hood position)
-via curves someone already tuned empirically on the real robot. There's no known conversion
-from those motor units back to physical ball speed/angle -- that requires measuring your
-actual flywheel radius and the real relationship between hood position and shot angle.
+via curves someone already tuned empirically on the real robot.
 
-The source post's section 2 describes exactly how to get that: slo-mo video (240fps) of
-the ball leaving the shooter, with a reference ruler taped to the shooter frame, at a
-handful of known shots (their example: 4 shots, high/low x fast/slow). That's real
-hardware data this repo doesn't have and I'm not going to guess at -- getting it wrong
-would mean confidently commanding a shot speed/angle based on made-up physics.
+**Half of the unit conversion is now solved.** `FlywheelPhysics` (in `subsystems/shooter/`)
+converts motor RPM to ball exit speed using the real shooter geometry (4in bottom wheel
+1:1 off the motor, 2in top wheel geared 2:1 off the bottom wheel -- confirmed to produce
+exactly matched surface speeds, which is the actual physical basis for "almost no spin,"
+not an approximation). What's still missing:
+
+1. **A real efficiency measurement.** `FlywheelPhysics.kAssumedEfficiency` (0.90) is FRC
+   3061's own measured value for their wheels/ball/compression, not this robot's. The
+   source post's section 2 describes how to get the real one: slo-mo video (240fps) of the
+   ball leaving the shooter, with a reference ruler taped to the frame, at a handful of
+   known shots. Compare the video-measured exit speed against
+   `FlywheelPhysics.exitSpeedFtPerSec(rpm, 1.0)` (no efficiency applied) to solve for the
+   real efficiency fraction.
+2. **Hood position -> launch angle.** No relationship between hood mechanism position and
+   the ball's actual launch angle is known yet -- same slo-mo video process, measuring
+   launch angle instead of speed, at a few different hood positions.
+
+That's real hardware data this repo doesn't have and isn't going to guess at -- getting it
+wrong would mean confidently commanding a shot speed/angle based on made-up physics.
 
 ### If you do the calibration and want to wire it in
 
-1. Replace (or supplement) `ShootingMath`'s distance-based curves with `v*(distance)` in
-   m/s and `elevation*(distance)` in radians, fit from your slo-mo measurements.
+1. Use `FlywheelPhysics.exitSpeedFtPerSec(rpm, realEfficiency)` (with your measured
+   efficiency) plus your fitted hood-angle relationship to build `v*(distance)` and
+   `elevation*(distance)` -- replacing (or supplementing) `ShootingMath`'s curves.
 2. In `Turret.periodic()`, instead of the virtual-target shift, call
    `ShootOnTheMoveSolver.solve(staticShot, turretVelocity, robotPose.getRotation().getRadians())`
    (the `turretVelocity` computation via `ShootOnTheMoveSolver.shooterVelocity()` already
@@ -78,3 +91,8 @@ would mean confidently commanding a shot speed/angle based on made-up physics.
 TranslationalVelocity`) confirming the rotation fix is actually wired in -- it would have
 failed before today's change, since a spinning-but-not-translating robot used to produce
 the exact same lead as a fully stationary one.
+
+`FlywheelPhysicsTest` confirms the "no spin by design" claim mathematically -- the bottom
+and top wheel surface speeds are computed independently from the stated diameters/gear
+ratio and asserted equal -- plus sanity checks on the exit-speed formula (zero RPM is zero
+speed, efficiency scales linearly, ft/s and m/s agree).
