@@ -8,6 +8,8 @@ package frc.robot;
 import com.ctre.phoenix6.HootAutoReplay;
 
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -27,6 +29,13 @@ public class Robot extends TimedRobot {
 
     @Override
     public void robotInit(){
+        // Records every NT value + console output to a .wpilog on the RIO's flash (and
+        // to a USB stick if one's plugged in) so a bad match/practice run can be replayed
+        // and diagnosed afterward instead of only living in whatever was on the dashboard
+        // at the time.
+        DataLogManager.start();
+        DriverStation.startDataLog(DataLogManager.getLog());
+
      /*  if (RobotController.getUserButton()) {
             m_robotContainer.intake.intakeCoast();
         } else {

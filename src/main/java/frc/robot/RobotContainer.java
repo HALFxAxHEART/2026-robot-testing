@@ -171,7 +171,7 @@ public class RobotContainer {
         }
         
         // 3. New Equation 3/20/26 (For Hub Shooting)
-        return (20.9 + 0.697 * targetDist + 0.243 * Math.pow(targetDist, 2));
+        return ShootingMath.shooterRPSForDistance(targetDist);
     }
 
     // EXPLANATION: Calculates hood deflection based on SOTM distance.
@@ -186,11 +186,7 @@ public class RobotContainer {
         }
         // 3. New Equation 3/20/26 (For Hub Shooting)
         else {
-            if (targetDist >= 2.2) {
-                optimal = (1 - (0.463 * targetDist));
-            } else {
-                optimal = 0;
-            }
+            optimal = ShootingMath.hoodAngleForDistance(targetDist);
         }
 
         // Belt-and-suspenders: Hood itself also enforces these as firmware soft limits.

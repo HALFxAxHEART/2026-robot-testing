@@ -12,7 +12,6 @@ import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 // WPILib Imports
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -64,15 +63,36 @@ public class Turret extends SubsystemBase {
     private final double kTargetCenterOffsetYInches = 0.0;  
 
     // --- Mechanical Constants ---
-    private final double kTurretRingTeeth = 200.0; 
-    private final double kEncoderGearTeeth = 16.0; 
-    private final double kTurretGearRatio = kTurretRingTeeth / kEncoderGearTeeth; 
+    private final double kTurretRingTeeth = 200.0;
+    private final double kEncoderGearTeeth = 16.0;
+    private final double kTurretGearRatio = kTurretRingTeeth / kEncoderGearTeeth;
     private final double kMaxTurretRotations = 0.30; //0.48
+
+    // --- FIELD DIMENSIONS ---
+    private static final double kFieldLengthMeters = 16.54;
+    private static final double kFieldWidthMeters = 8.21;
+    private static final double kDangerZoneClearanceMeters = 1.5;
+    private static final double kEstimatedShotSpeedMPS = 6.0;
+
+    private final TurretAimCalculator.Config m_aimConfig = new TurretAimCalculator.Config(
+        m_robotRelativeTurretOffset,
+        kBlueTargetCenter,
+        kRedTargetCenter,
+        new Translation2d(Units.inchesToMeters(kTargetCenterOffsetXInches), Units.inchesToMeters(kTargetCenterOffsetYInches)),
+        kTurretZeroOffset,
+        kTurretDirectionMultiplier,
+        kMaxTurretRotations,
+        kTurretGearRatio,
+        kFieldLengthMeters,
+        kFieldWidthMeters,
+        kDangerZoneClearanceMeters,
+        kEstimatedShotSpeedMPS
+    );
 
     // --- LIVE STATE VARIABLES ---
     public double m_distanceToHubMeters = 0.0;
     public double m_distanceToPassTargetMeters = 0.0;
-    public double m_virtualDistanceToHubMeters = 0.0; 
+    public double m_virtualDistanceToHubMeters = 0.0;
     private double m_targetMotorRotations = 0.0;
 
     public Turret(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> velocitySupplier, CANBus canbus) {
@@ -144,114 +164,31 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // 1. --- LIVE MOTOR DATA ---
+        // --- LIVE MOTOR DATA ---
         double currentMotorRotations = m_turretMotor.getPosition().refresh().getValueAsDouble();
         SmartDashboard.putNumber("Turret/Current_Motor_Rots", currentMotorRotations);
         SmartDashboard.putNumber("Turret/Current_Turret_Rots", currentMotorRotations / kTurretGearRatio);
 
-        // 2. --- FIELD VARIABLES ---
+        // --- SOLVE FOR THE AIM SOLUTION (pure math, see TurretAimCalculator) ---
         Pose2d robotPose = m_robotPoseSupplier.get();
         boolean isRed = isRedAlliance();
-        
-        double fieldLength = 16.54;
-        double fieldWidth = 8.21; 
-        double fieldMidpointX = fieldLength / 2.0; 
-        double hubCenterY = fieldWidth / 2.0; 
-        
-        boolean inOpponentOrMidZone = isRed ? (robotPose.getX() <= fieldMidpointX) : (robotPose.getX() >= fieldMidpointX);
+        ChassisSpeeds robotVelocity = m_robotVelocitySupplier.get();
 
-        Translation2d globalTurretPos = robotPose.getTranslation()
-            .plus(m_robotRelativeTurretOffset.rotateBy(robotPose.getRotation()));
+        TurretAimCalculator.AimSolution solution =
+            TurretAimCalculator.solve(m_aimConfig, robotPose, isRed, robotVelocity);
 
-        // ==========================================================
-        // 3. --- CALCULATE MASTER TARGET BASED ON ZONE ---
-        // ==========================================================
-        if (inOpponentOrMidZone) {
-            // -----------------------------
-            // A. PASSING MODE CALCULATION
-            // -----------------------------
-            m_mode = Mode.PASSING;
-            SmartDashboard.putString("Turret/Mode", m_mode.name());
-            
-            double passTargetX = isRed ? fieldLength : 0.0;
-            double passTargetY = robotPose.getY();
-            double dangerZoneClearanceMeters = 1.5; 
+        m_mode = solution.mode();
+        m_targetMotorRotations = solution.targetMotorRotations();
+        m_distanceToHubMeters = solution.distanceToHubMeters();
+        m_virtualDistanceToHubMeters = solution.virtualDistanceToHubMeters();
+        m_distanceToPassTargetMeters = solution.distanceToPassTargetMeters();
 
-            if (Math.abs(robotPose.getY() - hubCenterY) < dangerZoneClearanceMeters) {
-                passTargetY = (robotPose.getY() >= hubCenterY) 
-                    ? hubCenterY + dangerZoneClearanceMeters 
-                    : hubCenterY - dangerZoneClearanceMeters;
-            }
-            
-            passTargetY = MathUtil.clamp(passTargetY, 0.5, fieldWidth - 0.5);
-            Translation2d passTarget = new Translation2d(passTargetX, passTargetY);
-            Translation2d turretToPassTarget = passTarget.minus(globalTurretPos);
-            
-            m_distanceToPassTargetMeters = turretToPassTarget.getNorm();
-            SmartDashboard.putNumber("Turret/Pass_Distance_Meters", m_distanceToPassTargetMeters);
-            SmartDashboard.putNumber("Turret/Pass_Target_Y", passTargetY);
-
-            Rotation2d turretSetpoint = turretToPassTarget.getAngle()
-                .minus(robotPose.getRotation())
-                .minus(kTurretZeroOffset); 
-            double desiredTurretRotations = turretSetpoint.getRadians() / (2 * Math.PI);
-
-            // APPLY DIRECTION FIX
-            desiredTurretRotations *= kTurretDirectionMultiplier;
-
-            desiredTurretRotations = Math.IEEEremainder(desiredTurretRotations, 1.0);
-            desiredTurretRotations = MathUtil.clamp(desiredTurretRotations, -kMaxTurretRotations, kMaxTurretRotations);
-            
-            m_targetMotorRotations = desiredTurretRotations * kTurretGearRatio;
-
-        } else {
-            // -----------------------------
-            // B. SHOOTING MODE CALCULATION
-            // -----------------------------
-            m_mode = Mode.SHOOTING;
-            SmartDashboard.putString("Turret/Mode", m_mode.name());
-
-            Translation2d rawTargetTranslation = isRed ? kRedTargetCenter : kBlueTargetCenter;
-            Translation2d targetCorrectionOffset = new Translation2d(
-                Units.inchesToMeters(kTargetCenterOffsetXInches), 
-                Units.inchesToMeters(kTargetCenterOffsetYInches)
-            );
-
-            Translation2d finalTargetTranslation = isRed 
-                ? rawTargetTranslation.plus(targetCorrectionOffset) 
-                : rawTargetTranslation.minus(targetCorrectionOffset);
-                
-            Translation2d turretToTarget = finalTargetTranslation.minus(globalTurretPos);
-            m_distanceToHubMeters = turretToTarget.getNorm();
-            SmartDashboard.putNumber("Turret/Distance_To_Hub_Meters", m_distanceToHubMeters);
-
-            var speeds = m_robotVelocitySupplier.get();
-            double robotVelX = speeds.vxMetersPerSecond;
-            double robotVelY = speeds.vyMetersPerSecond;
-            double kEstimatedShotSpeedMPS = 6.0; 
-
-            double timeOfFlight = m_distanceToHubMeters / kEstimatedShotSpeedMPS;
-            Translation2d inheritedVelocityOffset = new Translation2d(robotVelX * timeOfFlight, robotVelY * timeOfFlight);
-            Translation2d virtualTargetTranslation = finalTargetTranslation.minus(inheritedVelocityOffset);
-            Translation2d turretToVirtualTarget = virtualTargetTranslation.minus(globalTurretPos);
-            
-            m_virtualDistanceToHubMeters = turretToVirtualTarget.getNorm();
-            SmartDashboard.putNumber("Turret/Virtual_Distance_Meters", m_virtualDistanceToHubMeters);
-
-            Rotation2d turretSetpoint = turretToVirtualTarget.getAngle()
-                .minus(robotPose.getRotation())
-                .minus(kTurretZeroOffset); 
-            double desiredTurretRotations = turretSetpoint.getRadians() / (2 * Math.PI);
-
-            // APPLY DIRECTION FIX
-            desiredTurretRotations *= kTurretDirectionMultiplier;
-
-            desiredTurretRotations = Math.IEEEremainder(desiredTurretRotations, 1.0);
-            desiredTurretRotations = MathUtil.clamp(desiredTurretRotations, -kMaxTurretRotations, kMaxTurretRotations);
-            
-            m_targetMotorRotations = desiredTurretRotations * kTurretGearRatio;
-        }
-
+        // --- TELEMETRY ---
+        SmartDashboard.putString("Turret/Mode", m_mode.name());
+        SmartDashboard.putNumber("Turret/Pass_Distance_Meters", m_distanceToPassTargetMeters);
+        SmartDashboard.putNumber("Turret/Pass_Target_Y", solution.passTargetY());
+        SmartDashboard.putNumber("Turret/Distance_To_Hub_Meters", m_distanceToHubMeters);
+        SmartDashboard.putNumber("Turret/Virtual_Distance_Meters", m_virtualDistanceToHubMeters);
         SmartDashboard.putNumber("Turret/Target_Motor_Rots", m_targetMotorRotations);
         SmartDashboard.putNumber("Turret/Target_Turret_Rots", m_targetMotorRotations / kTurretGearRatio);
     }
