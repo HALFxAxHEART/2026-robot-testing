@@ -51,16 +51,24 @@ class ShootingMathTest {
         assertEquals(ShootingMath.kMaxShooterRPS, ShootingMath.shooterRPSForDistance(50.0), 1e-9);
     }
 
+    /**
+     * Hood stays flat all the way out to 150in (matching the real test data range and
+     * confirmed with the team: angling it earlier wasn't needed and didn't help), not just
+     * to the old 2.2m threshold.
+     */
     @Test
-    void hoodAngleIsZeroBelowMinimumRange() {
+    void hoodAngleIsZeroThroughTheWholeTestedRange() {
         assertEquals(0.0, ShootingMath.hoodAngleForDistance(1.0));
-        assertEquals(0.0, ShootingMath.hoodAngleForDistance(2.19));
+        assertEquals(0.0, ShootingMath.hoodAngleForDistance(2.2));
+        assertEquals(0.0, ShootingMath.hoodAngleForDistance(3.0));
+        assertEquals(0.0, ShootingMath.hoodAngleForDistance(Units.inchesToMeters(149.0)));
     }
 
     @Test
-    void hoodAngleFollowsLinearFormulaAboveMinimumRange() {
-        assertEquals(1 - 0.463 * 2.2, ShootingMath.hoodAngleForDistance(2.2), 1e-9);
-        assertEquals(1 - 0.463 * 3.0, ShootingMath.hoodAngleForDistance(3.0), 1e-9);
+    void hoodAngleFollowsLinearFormulaBeyondTheTestedRange() {
+        double threshold = Units.inchesToMeters(150.0);
+        assertEquals(1 - 0.463 * threshold, ShootingMath.hoodAngleForDistance(threshold), 1e-9);
+        assertEquals(1 - 0.463 * 4.0, ShootingMath.hoodAngleForDistance(4.0), 1e-9);
     }
 
     @Test

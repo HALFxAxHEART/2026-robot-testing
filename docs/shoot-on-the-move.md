@@ -82,16 +82,14 @@ held at 0. `ShootingMath.shooterRPSForDistance()` now uses those directly (a per
 linear fit, `RPS = 19.6 + 0.0684 x distanceInches`) inside the tested range (42-150in),
 falling back to the older quadratic formula outside it.
 
-**Two things to confirm with the team:**
-1. **Units**: "Physical Distance" in the sheet is assumed to be inches (cross-checked
-   against the old formula, which tracks reasonably closely over this range if so, but
-   this is an inference, not a stated fact).
-2. **Hood strategy**: this data is hood=0 across the *whole* tested range, but
-   `hoodAngleForDistance()` already wants a non-zero hood past 2.2m (~86.6in) -- which
-   falls inside the 42-150in tested window. If flat-hood is the actual intended strategy
-   across this whole range, `hoodAngleForDistance()`'s 2.2m threshold should move out past
-   150in (~3.81m) to match. If hood is supposed to vary in that overlap, this RPS curve
-   needs a hood-varying equivalent instead (more test data).
+**Resolved with the team:**
+1. **Units**: confirmed "Physical Distance" is inches.
+2. **Hood strategy**: confirmed the hood should stay flat (0) across the whole tested
+   range -- angling it earlier than 150in wasn't needed and didn't help in testing, so
+   there was no reason to extrapolate a benefit that was never observed.
+   `hoodAngleForDistance()`'s threshold now matches the RPS curve's tested range exactly
+   (both end at 150in/3.81m) instead of the old 2.2m cutoff, so there's no more overlap
+   between "flat hood" and "measured RPS curve."
 
 Also worth knowing: the same CSV has a "Simulation stuff"/"Theory" section (X, Theta,
 Velocity, RPM F, Pos F...) that looks like a separate physics/trajectory model. Comparing

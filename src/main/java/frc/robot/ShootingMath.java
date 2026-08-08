@@ -31,18 +31,22 @@ public final class ShootingMath {
      * 0.4104 RPS. That's linear enough to use as a closed-form formula instead of an
      * interpolation table.
      *
-     * <p><b>Assumption to confirm:</b> "Physical Distance" in the sheet is assumed to be
-     * inches (cross-checked against the pre-existing quadratic formula below, which tracks
-     * reasonably closely over this range if so). If it's actually a different unit, this
-     * whole calibration shifts.
-     *
-     * <p><b>Only valid for a flat (0) hood angle.</b> {@link #hoodAngleForDistance} starts
-     * commanding a non-zero hood past 2.2m (~86.6in) -- inside that overlap, this measured
-     * curve and a non-zero hood would be in conflict. Confirm whether hood should stay
-     * flat across this whole range, or whether this data needs a hood-varying equivalent.
+     * <p>Confirmed: "Physical Distance" in the sheet is inches, and this whole range was
+     * tested with a flat (0) hood -- angling the hood earlier wasn't needed and didn't
+     * help, so {@link #hoodAngleForDistance} keeps the hood flat across this exact same
+     * range (see {@link #kFlatHoodMaxDistanceMeters}) rather than starting to angle it
+     * partway through, matching what was actually validated instead of extrapolating.
      */
     private static final double kMeasuredMinDistanceMeters = Units.inchesToMeters(42.0);
     private static final double kMeasuredMaxDistanceMeters = Units.inchesToMeters(150.0);
+
+    /**
+     * Hood stays flat (0) out to this distance, matching the real test data above --
+     * confirmed with the team that angling the hood earlier wasn't needed. Deliberately
+     * the same distance as {@link #kMeasuredMaxDistanceMeters}: beyond this point neither
+     * the RPS curve nor the hood angle is backed by real test data anymore.
+     */
+    private static final double kFlatHoodMaxDistanceMeters = kMeasuredMaxDistanceMeters;
     private static final double kMeasuredRpsAtZeroInches = 19.6;
     private static final double kMeasuredRpsPerInch = 0.0684;
 
@@ -67,7 +71,7 @@ public final class ShootingMath {
 
     /** @return Hood setpoint (unclamped) for a given hub-shooting distance in meters. */
     public static double hoodAngleForDistance(double targetDistMeters) {
-        if (targetDistMeters >= 2.2) {
+        if (targetDistMeters >= kFlatHoodMaxDistanceMeters) {
             return 1 - (0.463 * targetDistMeters);
         }
         return 0;
