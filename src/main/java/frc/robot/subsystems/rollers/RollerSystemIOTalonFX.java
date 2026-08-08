@@ -1,5 +1,6 @@
 package frc.robot.subsystems.rollers;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.controls.Follower;
@@ -38,6 +39,16 @@ public class RollerSystemIOTalonFX implements RollerSystemIO {
         // Using the correct CTRE Phoenix 6 (v25+) enum for followers
         lowerBelt.setControl(new Follower(13, MotorAlignmentValue.Opposed));
         upperBelt.setControl(new Follower(13, MotorAlignmentValue.Opposed)); // Change to .Aligned if it spins backwards!
+
+        // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
+        // then drop everything else (on all 3 devices) to a minimal rate -- cuts CAN bus
+        // load instead of every signal defaulting to this device's much higher rate.
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            rollerFloor.getVelocity(),
+            rollerFloor.getMotorVoltage());
+        rollerFloor.optimizeBusUtilization();
+        lowerBelt.optimizeBusUtilization();
+        upperBelt.optimizeBusUtilization();
     }
 
     @Override

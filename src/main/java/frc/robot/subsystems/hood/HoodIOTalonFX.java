@@ -1,5 +1,6 @@
 package frc.robot.subsystems.hood;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
@@ -34,6 +35,16 @@ public class HoodIOTalonFX implements HoodIO {
         Slot0Configs hoodPID = new Slot0Configs();
         hoodPID.kP = 2;
         hood.getConfigurator().apply(hoodPID);
+
+        // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
+        // then drop everything else to a minimal rate -- cuts CAN bus load instead of every
+        // signal defaulting to this device's much higher rate.
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            hood.getPosition(),
+            hood.getVelocity(),
+            hood.getMotorVoltage(),
+            hood.getStatorCurrent());
+        hood.optimizeBusUtilization();
     }
 
     @Override

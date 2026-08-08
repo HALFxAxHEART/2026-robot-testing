@@ -1,5 +1,6 @@
 package frc.robot.subsystems.shooter;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
@@ -39,6 +40,17 @@ public class ShooterIOTalonFX implements ShooterIO {
         shooterfollowConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         followShoot.getConfigurator().apply(shooterfollowConfig);
         followShoot.setControl(new Follower(27, MotorAlignmentValue.Opposed));
+
+        // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
+        // then drop everything else (on both devices) to a minimal rate -- cuts CAN bus
+        // load instead of every signal defaulting to this device's much higher rate.
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            leadShoot.getVelocity(),
+            leadShoot.getMotorVoltage(),
+            leadShoot.getStatorCurrent(),
+            leadShoot.getSupplyCurrent());
+        leadShoot.optimizeBusUtilization();
+        followShoot.optimizeBusUtilization();
     }
 
     @Override

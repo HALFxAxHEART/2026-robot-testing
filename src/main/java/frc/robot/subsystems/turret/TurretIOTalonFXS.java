@@ -1,5 +1,6 @@
 package frc.robot.subsystems.turret;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXSConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
@@ -28,11 +29,23 @@ public class TurretIOTalonFXS implements TurretIO {
 
         m_turretMotor.getConfigurator().apply(config);
         m_turretMotor.setPosition(0);
+
+        // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
+        // then drop everything else to a minimal rate -- cuts CAN bus load instead of every
+        // signal defaulting to this device's much higher out-of-the-box rate.
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            m_turretMotor.getPosition(),
+            m_turretMotor.getVelocity(),
+            m_turretMotor.getMotorVoltage());
+        m_turretMotor.optimizeBusUtilization();
     }
 
     @Override
     public void updateInputs(TurretIOInputs inputs) {
-        inputs.positionMotorRotations = m_turretMotor.getPosition().refresh().getValueAsDouble();
+        // No .refresh() here -- Phoenix6 keeps these signals fresh in the background at the
+        // rate configured above, so reading the cached value avoids blocking the loop on a
+        // synchronous CAN round-trip every single cycle.
+        inputs.positionMotorRotations = m_turretMotor.getPosition().getValueAsDouble();
         inputs.velocityMotorRotationsPerSec = m_turretMotor.getVelocity().getValueAsDouble();
         inputs.appliedVolts = m_turretMotor.getMotorVoltage().getValueAsDouble();
     }

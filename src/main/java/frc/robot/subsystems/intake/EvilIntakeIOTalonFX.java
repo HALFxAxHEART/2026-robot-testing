@@ -1,5 +1,6 @@
 package frc.robot.subsystems.intake;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionVoltage;
@@ -58,6 +59,15 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         // --- SPIN MOTOR CONFIGURATION ---
         TalonFXConfiguration spinConfig = new TalonFXConfiguration();
         spinMotor.getConfigurator().apply(spinConfig);
+
+        // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
+        // then drop everything else (on both devices) to a minimal rate -- cuts CAN bus
+        // load instead of every signal defaulting to this device's much higher rate.
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            intakeMotor.getPosition(),
+            intakeMotor.getRotorPosition());
+        intakeMotor.optimizeBusUtilization();
+        spinMotor.optimizeBusUtilization();
     }
 
     @Override
