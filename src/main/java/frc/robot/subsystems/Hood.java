@@ -1,16 +1,22 @@
 package frc.robot.subsystems;
 
+import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.Volts;
+
 import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 public class Hood extends SubsystemBase {
     // Same numbers RobotContainer clamps the commanded angle to -- kept here as the
@@ -22,8 +28,32 @@ public class Hood extends SubsystemBase {
 
     private double setpoint = 0.0;
 
+    private final VoltageOut m_sysIdControl = new VoltageOut(0);
+
+    /**
+     * NOT bound to any button by default -- run this deliberately, with someone watching
+     * the hood, not mid-match. See docs/characterization.md. Kept slow/short since the
+     * hood only has ~2.6 rotations of travel between its soft limits (which will now
+     * safely stop a sweep instead of letting it run into the hard stop).
+     */
+    private final SysIdRoutine m_sysIdRoutine;
+
     public Hood(CANBus canbus){
         hood = new TalonFX(20, canbus);
+
+        m_sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(
+                Volts.of(0.5).per(Second), // slow ramp -- short travel range
+                Volts.of(2),               // small step -- short travel range
+                Second.of(5),              // short timeout so it can't run away
+                state -> SignalLogger.writeString("SysIdHood_State", state.toString())
+            ),
+            new SysIdRoutine.Mechanism(
+                voltage -> hood.setControl(m_sysIdControl.withOutput(voltage.in(Volts))),
+                null,
+                this
+            )
+        );
 
         // --- HOOD CONFIG ---
         TalonFXConfiguration hoodConfig = new TalonFXConfiguration();
@@ -71,9 +101,19 @@ public class Hood extends SubsystemBase {
 
     public Command hoodgo(DoubleSupplier posH) {
         return this.runEnd(
-            () -> goTo(posH.getAsDouble()), 
+            () -> goTo(posH.getAsDouble()),
             () -> stop()
         );
+    }
+
+    /** Runs a SysId quasistatic (slow ramp) sweep. See docs/characterization.md before using. */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutine.quasistatic(direction);
+    }
+
+    /** Runs a SysId dynamic (step voltage) sweep. See docs/characterization.md before using. */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutine.dynamic(direction);
     }
 
     @Override

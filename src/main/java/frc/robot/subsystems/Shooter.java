@@ -1,12 +1,16 @@
 package frc.robot.subsystems;
 
+import static edu.wpi.first.units.Units.Volts;
+
 import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -14,21 +18,45 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 public class Shooter extends SubsystemBase {
     // Shooter has 2 motors that runs the shooters, they are opposed - we have one follow the other
     private final TalonFX leadShoot;
     private final TalonFX followShoot;
 
+    private final VoltageOut m_sysIdControl = new VoltageOut(0);
+
+    /**
+     * NOT bound to any button by default -- run this deliberately, with someone watching
+     * the flywheel and a hand on the E-stop, not mid-match. See docs/characterization.md.
+     * Ramp/step voltage are kept conservative since this is a heavy flywheel, not a drivetrain.
+     */
+    private final SysIdRoutine m_sysIdRoutine;
+
     /** We store the target RPS here so the plus/minus buttons work correctly */
-    private double setpoint = 0.0; 
+    private double setpoint = 0.0;
 
     // Configs for the 2 motors and their PID settings
     public Shooter(CANBus canbus) {
         // On the Canbus UPPER
         leadShoot = new TalonFX(27, canbus);
         followShoot = new TalonFX(15, canbus);
-    
+
+        m_sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(
+                null,        // default ramp rate (1 V/s)
+                Volts.of(4), // reduced dynamic step to avoid slamming the flywheel to full speed
+                null,        // default timeout (10 s)
+                state -> SignalLogger.writeString("SysIdShooter_State", state.toString())
+            ),
+            new SysIdRoutine.Mechanism(
+                voltage -> leadShoot.setControl(m_sysIdControl.withOutput(voltage.in(Volts))),
+                null,
+                this
+            )
+        );
+
         // --- LEAD SHOOTER CONFIG ---
         TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
         shooterConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast; // Coast is safer for heavy flywheels
@@ -99,9 +127,19 @@ public class Shooter extends SubsystemBase {
      */
     public Command shoot(DoubleSupplier RPS) {
         return this.runEnd(
-            () -> goShoot(RPS.getAsDouble()), 
+            () -> goShoot(RPS.getAsDouble()),
             () -> stop()
         );
+    }
+
+    /** Runs a SysId quasistatic (slow ramp) sweep. See docs/characterization.md before using. */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutine.quasistatic(direction);
+    }
+
+    /** Runs a SysId dynamic (step voltage) sweep. See docs/characterization.md before using. */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutine.dynamic(direction);
     }
 
     @Override
