@@ -1,7 +1,6 @@
 package frc.robot.subsystems.shooter;
 
 import com.ctre.phoenix6.CANBus;
-import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
@@ -28,25 +27,13 @@ public class ShooterIOTalonFX implements ShooterIO {
         shooterConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast; // Coast is safer for heavy flywheels
 
         // PID Configuration
-        shooterConfig.Slot0.kP = 0.4;
+        shooterConfig.Slot0.kP = 0.8;
         shooterConfig.Slot0.kI = 0.0;
-        shooterConfig.Slot0.kD = 0.0005;
-        shooterConfig.Slot0.kV = 0.16;
+        shooterConfig.Slot0.kD = 0.0;
+        shooterConfig.Slot0.kV = 0.145;
         shooterConfig.Slot0.kS = 0.0;
 
         leadShoot.getConfigurator().apply(shooterConfig);
-
-        // --- SHOOTER CONFIG ---
-        Slot0Configs shooterPID = new Slot0Configs();
-        shooterPID.kP = .8; // Changed to 2.0 for smoother recovery
-        shooterPID.kI = 0.0;
-        shooterPID.kD = 0; //.0005
-        shooterPID.kV = 0.145; // .16
-        shooterPID.kS = 0;
-        //shooterPID.kA = 1.0;
-
-        leadShoot.getConfigurator().apply(shooterPID);
-        //followShoot.getConfigurator().apply(shooterPID);
 
         TalonFXConfiguration shooterfollowConfig = new TalonFXConfiguration();
         shooterfollowConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;

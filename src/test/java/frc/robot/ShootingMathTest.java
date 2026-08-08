@@ -20,6 +20,13 @@ class ShootingMathTest {
     }
 
     @Test
+    void shooterRPSClampsAtExtremeDistance() {
+        // Field diagonal is ~18.5m; well beyond that the unclamped quadratic would exceed
+        // 100 RPS. Confirms the sanity ceiling actually engages instead of growing forever.
+        assertEquals(ShootingMath.kMaxShooterRPS, ShootingMath.shooterRPSForDistance(50.0), 1e-9);
+    }
+
+    @Test
     void hoodAngleIsZeroBelowMinimumRange() {
         assertEquals(0.0, ShootingMath.hoodAngleForDistance(1.0));
         assertEquals(0.0, ShootingMath.hoodAngleForDistance(2.19));

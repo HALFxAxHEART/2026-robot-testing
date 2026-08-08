@@ -52,7 +52,7 @@ import frc.robot.wrappers.Limelight;
 
 public class RobotContainer {
     // --- EXTRA VARIABLES START ---
-    public final CANBus upper = new CANBus("Upper");
+    public final CANBus upper = new CANBus(Constants.Upper);
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); 
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); 
     // --- EXTRA VARIABLES END ---
@@ -188,14 +188,6 @@ public class RobotContainer {
             // The failsafe safely interrupts the default command to zero the turret, then resumes tracking when released
             turret.run(() -> turret.goToZero()),
             new theYappy(rollersystem, () -> shooter.isShooterReady(2))
-        );
-    }
-
-    /** This will coordinate all necessary subsystems and only shoot when they all report readiness */
-    public Command testTheStupids() {
-        return new ParallelCommandGroup(
-            // Command C: Shoot only when the other subsystems are ready.
-            new theYappy(rollersystem, () -> readyToShoot())
         );
     }
 

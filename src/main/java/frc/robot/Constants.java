@@ -17,8 +17,9 @@ import frc.robot.generated.TunerConstants;
 
 public class Constants {
 
-            public static final String Jarvis = "Jarvis";
-            public static final String Upper = "Upper";
+    /** CAN bus names -- keep these as the single source of truth instead of duplicating the strings. */
+    public static final String Jarvis = "Jarvis";
+    public static final String Upper = "Upper";
 
     /**
      * AdvantageKit run mode. REAL is picked automatically on the roboRIO. When not real,
@@ -126,10 +127,6 @@ public class Constants {
             REAR_LEFT,
             REAR_RIGHT
         }
-    }
-   //shooter setpoints
-    public static final class ShooterConstants {
-        
     }
 
     //  INTAKE CONSTANTS YIPPPIEEEEE!!!   

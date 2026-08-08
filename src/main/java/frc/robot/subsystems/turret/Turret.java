@@ -88,6 +88,7 @@ public class Turret extends SubsystemBase {
     public double m_distanceToPassTargetMeters = 0.0;
     public double m_virtualDistanceToHubMeters = 0.0;
     private double m_targetMotorRotations = 0.0;
+    private boolean m_hasSolvedAim = false;
 
     public Turret(TurretIO io, Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> velocitySupplier) {
         this.io = io;
@@ -124,7 +125,11 @@ public class Turret extends SubsystemBase {
     }
 
     public boolean isTurretReady(){
-        if (m_targetMotorRotations == 0.0) {
+        // A legitimate aim solution can land exactly on 0 motor rotations -- track whether
+        // we've ever actually solved an aim instead of using the target value as a proxy
+        // for "not aiming yet" (which used to make a real 0-rotation solution report
+        // "not ready" forever).
+        if (!m_hasSolvedAim) {
             return false;
         }
         return Math.abs(inputs.positionMotorRotations - m_targetMotorRotations) <= 0.2;
@@ -160,6 +165,7 @@ public class Turret extends SubsystemBase {
         m_distanceToHubMeters = solution.distanceToHubMeters();
         m_virtualDistanceToHubMeters = solution.virtualDistanceToHubMeters();
         m_distanceToPassTargetMeters = solution.distanceToPassTargetMeters();
+        m_hasSolvedAim = true;
 
         // --- TELEMETRY ---
         SmartDashboard.putString("Turret/Mode", m_mode.name());
