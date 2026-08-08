@@ -50,13 +50,13 @@ public final class TurretAimCalculator {
             ? (robotPose.getX() <= fieldMidpointX)
             : (robotPose.getX() >= fieldMidpointX);
 
-        Translation2d globalTurretPos = robotPose.getTranslation()
-            .plus(cfg.turretOffsetFromRobot().rotateBy(robotPose.getRotation()));
+        Translation2d fieldFrameTurretOffset = cfg.turretOffsetFromRobot().rotateBy(robotPose.getRotation());
+        Translation2d globalTurretPos = robotPose.getTranslation().plus(fieldFrameTurretOffset);
 
         if (inOpponentOrMidZone) {
             return solvePassing(cfg, robotPose, isRedAlliance, globalTurretPos, hubCenterY);
         }
-        return solveShooting(cfg, robotPose, isRedAlliance, robotVelocity, globalTurretPos);
+        return solveShooting(cfg, robotPose, isRedAlliance, robotVelocity, globalTurretPos, fieldFrameTurretOffset);
     }
 
     private static AimSolution solvePassing(
@@ -89,7 +89,8 @@ public final class TurretAimCalculator {
     }
 
     private static AimSolution solveShooting(
-        Config cfg, Pose2d robotPose, boolean isRedAlliance, ChassisSpeeds robotVelocity, Translation2d globalTurretPos
+        Config cfg, Pose2d robotPose, boolean isRedAlliance, ChassisSpeeds robotVelocity,
+        Translation2d globalTurretPos, Translation2d fieldFrameTurretOffset
     ) {
         Translation2d rawTargetTranslation = isRedAlliance ? cfg.redTargetCenter() : cfg.blueTargetCenter();
         Translation2d finalTargetTranslation = isRedAlliance
@@ -99,10 +100,19 @@ public final class TurretAimCalculator {
         Translation2d turretToTarget = finalTargetTranslation.minus(globalTurretPos);
         double distanceToHubMeters = turretToTarget.getNorm();
 
-        double robotVelX = robotVelocity.vxMetersPerSecond;
-        double robotVelY = robotVelocity.vyMetersPerSecond;
+        // Velocity the turret itself is moving at -- not just the robot's center velocity.
+        // A turret offset from the center of rotation picks up extra tangential velocity
+        // whenever the robot is turning (v = v_center + omega x r_offset), which matters
+        // for the lead calculation below. See "Accounting for Robot Rotation" in
+        // https://www.chiefdelphi.com/t/huskie-physics-shoot-on-the-move-with-equations/522805
+        Translation2d turretVelocity = ShootOnTheMoveSolver.shooterVelocity(
+            new Translation2d(robotVelocity.vxMetersPerSecond, robotVelocity.vyMetersPerSecond),
+            robotVelocity.omegaRadiansPerSecond,
+            fieldFrameTurretOffset
+        );
+
         double timeOfFlight = distanceToHubMeters / cfg.estimatedShotSpeedMps();
-        Translation2d inheritedVelocityOffset = new Translation2d(robotVelX * timeOfFlight, robotVelY * timeOfFlight);
+        Translation2d inheritedVelocityOffset = turretVelocity.times(timeOfFlight);
         Translation2d virtualTargetTranslation = finalTargetTranslation.minus(inheritedVelocityOffset);
         Translation2d turretToVirtualTarget = virtualTargetTranslation.minus(globalTurretPos);
         double virtualDistanceToHubMeters = turretToVirtualTarget.getNorm();

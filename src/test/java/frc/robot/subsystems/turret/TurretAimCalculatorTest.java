@@ -126,6 +126,28 @@ class TurretAimCalculatorTest {
         assertEquals(0.0, solution.virtualDistanceToHubMeters());
     }
 
+    /**
+     * Regression test for the turret-rotation lead correction (see
+     * ShootOnTheMoveSolver.shooterVelocity, called from solveShooting): a turret offset
+     * from the robot's center picks up tangential velocity purely from spinning, even
+     * with zero translational velocity. Before that fix, omega was ignored entirely, so
+     * this would have failed (both distances would be exactly equal).
+     */
+    @Test
+    void spinningRobotShiftsLeadEvenWithZeroTranslationalVelocity() {
+        Pose2d pose = new Pose2d(2.105, 4.105, Rotation2d.kZero);
+        ChassisSpeeds spinning = new ChassisSpeeds(0, 0, 3.0);
+
+        var stationary = TurretAimCalculator.solve(CONFIG, pose, false, STATIONARY);
+        var spun = TurretAimCalculator.solve(CONFIG, pose, false, spinning);
+
+        // Zero net turret velocity (no translation, no spin) means no lead correction at all.
+        assertEquals(stationary.distanceToHubMeters(), stationary.virtualDistanceToHubMeters(), 1e-9);
+
+        // Spinning alone shifts the lead-corrected distance away from the raw distance.
+        assertTrue(Math.abs(spun.virtualDistanceToHubMeters() - spun.distanceToHubMeters()) > 1e-6);
+    }
+
     @Test
     void motorRotationsNeverExceedGearRatioTimesMaxTurretRotations() {
         // Sweep a bunch of headings and confirm the clamp always holds, on both alliances.
