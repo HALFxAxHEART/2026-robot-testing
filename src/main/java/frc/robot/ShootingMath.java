@@ -1,12 +1,14 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.util.Units;
 
 /**
  * Pure shooter-RPS / hood-angle formulas, pulled out of RobotContainer so they can be
  * unit tested without spinning up a whole RobotContainer (drivetrain, CAN devices, etc).
- * These cover the "New Equation 3/20/26" hub-shooting curves only -- passing-mode still
- * goes through the InterpolatingDoubleTreeMap lookups in RobotContainer.
+ * These cover the "New Equation 3/20/26" hub-shooting curves, plus a real-test-data
+ * override -- passing-mode still goes through the InterpolatingDoubleTreeMap lookups in
+ * RobotContainer.
  */
 public final class ShootingMath {
 
@@ -20,11 +22,46 @@ public final class ShootingMath {
      */
     public static final double kMaxShooterRPS = 70.0;
 
+    /**
+     * Real shooter test data from "Turret Raw Values - Sheet1.csv" (in the repo root),
+     * rows for Physical Distance 42-150 (in 6in steps), all taken with Hood Angle held
+     * at 0. The sheet's "Cal" column (the calibrated RPS target -- confirmed against the
+     * "actual RPM" column, which equals Cal*60 exactly on every row) is a perfectly
+     * linear function of distance across all 19 points: every 6in step adds exactly
+     * 0.4104 RPS. That's linear enough to use as a closed-form formula instead of an
+     * interpolation table.
+     *
+     * <p><b>Assumption to confirm:</b> "Physical Distance" in the sheet is assumed to be
+     * inches (cross-checked against the pre-existing quadratic formula below, which tracks
+     * reasonably closely over this range if so). If it's actually a different unit, this
+     * whole calibration shifts.
+     *
+     * <p><b>Only valid for a flat (0) hood angle.</b> {@link #hoodAngleForDistance} starts
+     * commanding a non-zero hood past 2.2m (~86.6in) -- inside that overlap, this measured
+     * curve and a non-zero hood would be in conflict. Confirm whether hood should stay
+     * flat across this whole range, or whether this data needs a hood-varying equivalent.
+     */
+    private static final double kMeasuredMinDistanceMeters = Units.inchesToMeters(42.0);
+    private static final double kMeasuredMaxDistanceMeters = Units.inchesToMeters(150.0);
+    private static final double kMeasuredRpsAtZeroInches = 19.6;
+    private static final double kMeasuredRpsPerInch = 0.0684;
+
     private ShootingMath() {}
 
-    /** @return Flywheel setpoint in RPS for a given hub-shooting distance in meters, clamped to a sane ceiling. */
+    /**
+     * @return Flywheel setpoint in RPS for a given hub-shooting distance in meters, clamped
+     *         to a sane ceiling. Uses the real measured/calibrated curve within the tested
+     *         range (see {@link #kMeasuredMinDistanceMeters}), and the older quadratic
+     *         formula outside it.
+     */
     public static double shooterRPSForDistance(double targetDistMeters) {
-        double rps = 20.9 + 0.697 * targetDistMeters + 0.243 * Math.pow(targetDistMeters, 2);
+        double rps;
+        if (targetDistMeters >= kMeasuredMinDistanceMeters && targetDistMeters <= kMeasuredMaxDistanceMeters) {
+            double distanceInches = Units.metersToInches(targetDistMeters);
+            rps = kMeasuredRpsAtZeroInches + kMeasuredRpsPerInch * distanceInches;
+        } else {
+            rps = 20.9 + 0.697 * targetDistMeters + 0.243 * Math.pow(targetDistMeters, 2);
+        }
         return MathUtil.clamp(rps, 0, kMaxShooterRPS);
     }
 

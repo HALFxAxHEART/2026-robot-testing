@@ -75,6 +75,32 @@ wrong would mean confidently commanding a shot speed/angle based on made-up phys
    straight into the same motor-rotation conversion `solveTurretMotorRotations()` already
    does with the virtual-target's aim angle.
 
+## Real test data now feeds the static shot (partially)
+
+`Turret Raw Values - Sheet1.csv` (repo root) has real distance-vs-RPS test points, hood
+held at 0. `ShootingMath.shooterRPSForDistance()` now uses those directly (a perfectly
+linear fit, `RPS = 19.6 + 0.0684 x distanceInches`) inside the tested range (42-150in),
+falling back to the older quadratic formula outside it.
+
+**Two things to confirm with the team:**
+1. **Units**: "Physical Distance" in the sheet is assumed to be inches (cross-checked
+   against the old formula, which tracks reasonably closely over this range if so, but
+   this is an inference, not a stated fact).
+2. **Hood strategy**: this data is hood=0 across the *whole* tested range, but
+   `hoodAngleForDistance()` already wants a non-zero hood past 2.2m (~86.6in) -- which
+   falls inside the 42-150in tested window. If flat-hood is the actual intended strategy
+   across this whole range, `hoodAngleForDistance()`'s 2.2m threshold should move out past
+   150in (~3.81m) to match. If hood is supposed to vary in that overlap, this RPS curve
+   needs a hood-varying equivalent instead (more test data).
+
+Also worth knowing: the same CSV has a "Simulation stuff"/"Theory" section (X, Theta,
+Velocity, RPM F, Pos F...) that looks like a separate physics/trajectory model. Comparing
+its `Velocity (ft/s)` column against `FlywheelPhysics` predictions gives a rough efficiency
+estimate around 85-88% (vs. the placeholder 90%) -- but since the exact derivation of those
+columns isn't confirmed, that's a loose observation, not a wired-in value. That sheet's
+"Theory" columns also break down (huge negative values) past physical distance ~294in --
+a spreadsheet formula issue, not real data; ignore anything past that point.
+
 ## Testing
 
 `ShootOnTheMoveSolverTest` checks the algorithm itself, independent of any calibration:
@@ -96,3 +122,7 @@ the exact same lead as a fully stationary one.
 and top wheel surface speeds are computed independently from the stated diameters/gear
 ratio and asserted equal -- plus sanity checks on the exit-speed formula (zero RPM is zero
 speed, efficiency scales linearly, ft/s and m/s agree).
+
+`ShootingMathTest` has cases transcribed directly from the CSV's `Cal` column (not derived
+from the formula being tested) to confirm the real data was wired in correctly, plus a
+case confirming distances just outside the tested range still fall back to the old formula.
