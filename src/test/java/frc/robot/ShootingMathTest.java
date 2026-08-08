@@ -3,7 +3,7 @@ package frc.robot;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.hood.Hood;
 import org.junit.jupiter.api.Test;
 
 class ShootingMathTest {

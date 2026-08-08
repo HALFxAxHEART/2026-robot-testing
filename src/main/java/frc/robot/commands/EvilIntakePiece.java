@@ -3,7 +3,7 @@ package frc.robot.commands;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.EvilIntakePosition;
-import frc.robot.subsystems.EvilIntake;
+import frc.robot.subsystems.intake.EvilIntake;
 
 public class EvilIntakePiece extends Command{
     /** Give the intake this long to rotate out before we spin the rollers. */
