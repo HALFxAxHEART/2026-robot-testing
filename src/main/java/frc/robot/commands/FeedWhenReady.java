@@ -5,11 +5,12 @@ import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.subsystems.rollers.RollerSystem;
 
-public class theYappy extends Command{
+/** Spins the feed rollers while {@code runCondition} holds true (e.g. "the rest of the shooter is ready"), stops otherwise. Runs until interrupted -- has no end condition of its own. */
+public class FeedWhenReady extends Command{
     RollerSystem rollers;
     BooleanSupplier runCondition;
 
-    public theYappy(RollerSystem rollers, BooleanSupplier runCondition){
+    public FeedWhenReady(RollerSystem rollers, BooleanSupplier runCondition){
         this.rollers = rollers;
         this.runCondition = runCondition;
 

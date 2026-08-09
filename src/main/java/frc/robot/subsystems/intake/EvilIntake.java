@@ -11,7 +11,6 @@ import frc.robot.Constants.EvilIntakePosition;
 public class EvilIntake extends SubsystemBase {
      private final EvilIntakeIO io;
      private final EvilIntakeIOInputsAutoLogged inputs = new EvilIntakeIOInputsAutoLogged();
-     EvilIntakePosition pos = EvilIntakePosition.in;
 
      //debugging
      boolean hitPoint = false;
@@ -30,17 +29,10 @@ public class EvilIntake extends SubsystemBase {
         SmartDashboard.putNumber("Intake ID", intakevalueid);
     }
 
-        // Go-go Gadget Move (Makes the Intake Move)
-    public void evilyummy(){
-        //intakeMotor.set(1);
-    }
-
     // Go-go Gadget Rotate (Makes Intake Rotate)
-    public void evilyummy(EvilIntakePosition pos){ //pos is 0.35 comming in from file "Constants.java" through "RobotContainer.java" Through "EvilIntakePiece.java" to here.
+    public void evilyummy(EvilIntakePosition pos){ //pos is 0.36 comming in from file "Constants.java" through "RobotContainer.java" Through "EvilIntakePiece.java" to here.
         hitPoint = true;
         hitPointValue = pos.getAngle();
-
-        //this.pos = pos;
 
         io.setRotationPosition(pos.getAngle());
     }
@@ -67,12 +59,5 @@ public class EvilIntake extends SubsystemBase {
         SmartDashboard.putNumber("Intake HitPointValue", hitPointValue);
         // positionRotations is already published via Logger.processInputs above -- no
         // need to duplicate it through a second NT write.
-        /* SmartDashboard.putNumber("Intake Position Degrees", getAngle());
-        SmartDashboard.putString("Intake Target Position", pos.name());
-        SmartDashboard.putNumber("Intake Target Revolutions", pos.getAngle());
-        SmartDashboard.putNumber("Intake RPM", intakeMotor.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("stator current", rotationMotor.getStatorCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("supply current", rotationMotor.getSupplyCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("torque current", rotationMotor.getTorqueCurrent().getValueAsDouble()); */
     }
 }

@@ -8,6 +8,7 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
@@ -30,7 +31,11 @@ public class AutonContainer{
         // Fallback onto the config in Constants because it's better than crashing
         RobotConfig config = PP_CONFIG;
         try { config = RobotConfig.fromGUISettings(); }
-        catch (Exception e) { e.printStackTrace(); }
+        catch (Exception e) {
+            // Fall back to the Constants copy above -- but a mismatched/missing GUI
+            // config is worth knowing about on the Driver Station, not just stdout.
+            DriverStation.reportError("PathPlanner GUI config failed to load, using Constants fallback: " + e.getMessage(), e.getStackTrace());
+        }
 
         AutoBuilder.configure(
             drivetrain::getPose, 

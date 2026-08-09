@@ -25,7 +25,7 @@ import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.Constants.EvilIntakePosition;
 import frc.robot.commands.AutonContainer;
 import frc.robot.commands.EvilIntakePiece;
-import frc.robot.commands.theYappy;
+import frc.robot.commands.FeedWhenReady;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.hood.Hood;
@@ -48,7 +48,6 @@ import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIO;
 import frc.robot.subsystems.turret.TurretIOSim;
 import frc.robot.subsystems.turret.TurretIOTalonFXS;
-import frc.robot.wrappers.Limelight;
 
 public class RobotContainer {
     // --- EXTRA VARIABLES START ---
@@ -63,7 +62,6 @@ public class RobotContainer {
      .withDriveRequestType(DriveRequestType.OpenLoopVoltage); 
     private final Telemetry logger = new Telemetry(MaxSpeed);
     private final CommandXboxController joystick = new CommandXboxController(0);
-    public final Limelight limelight = new Limelight("limelight");
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
     // --- SWERVE DRIVE VARIABLES END ---
 
@@ -177,7 +175,7 @@ public class RobotContainer {
             // Notice MoveTurret is gone! The default command we set above handles aiming.
             
             // Command C: Shoot only when the other subsystems are ready.
-            new theYappy(rollersystem, () -> readyToShoot()),
+            new FeedWhenReady(rollersystem, () -> readyToShoot()),
             hood.hoodgo(() -> calculateOptimalHoodAngle())
         );
     }
@@ -188,7 +186,7 @@ public class RobotContainer {
             shooter.shoot(() -> 23), 
             // The failsafe safely interrupts the default command to zero the turret, then resumes tracking when released
             turret.run(() -> turret.goToZero()),
-            new theYappy(rollersystem, () -> shooter.isShooterReady(2))
+            new FeedWhenReady(rollersystem, () -> shooter.isShooterReady(2))
         );
     }
 
