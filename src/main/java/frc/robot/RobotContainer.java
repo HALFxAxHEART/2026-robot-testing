@@ -14,7 +14,6 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.MathUtil; // Added for safety clamp
-import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap; // Added for Passing
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -102,24 +101,14 @@ public class RobotContainer {
             () -> drivetrain.getState().Speeds
         );
 
-    final AutonContainer auton = new AutonContainer(this); 
+    final AutonContainer auton = new AutonContainer(this);
     final SendableChooser<Command> autonChooser = auton.buildAutonChooser();
     // --- TURRET VARIABLES END ---
-
-    // --- PASSING INTERPOLATION MAPS ---
-    private final InterpolatingDoubleTreeMap m_passRpmMap = new InterpolatingDoubleTreeMap();
-    private final InterpolatingDoubleTreeMap m_passHoodMap = new InterpolatingDoubleTreeMap();
 
     // EXPLANATION: This is the Constructor. It runs once when the robot boots up.
     public RobotContainer() {
         SmartDashboard.putData("Auton Selector", autonChooser);
         configureBindings();
-        
-        // Populate the passing maps with your field-length data
-        m_passRpmMap.put(8.27, 45.0);
-        m_passRpmMap.put(16.54, 60.0);
-        m_passHoodMap.put(8.27, -2.2);
-        m_passHoodMap.put(16.54, -2.2);
     }
 
     /** @return Whether the robot is on the red alliance or not. Defaults to false (blue) if the DS hasn't reported an alliance yet. */
@@ -197,9 +186,9 @@ public class RobotContainer {
 
         // 2. Override if Passing
         if (turret.getMode() == Turret.Mode.PASSING) {
-            return m_passRpmMap.get(targetDist);
+            return PassingMath.shooterRPSForDistance(targetDist);
         }
-        
+
         // 3. New Equation 3/20/26 (For Hub Shooting)
         return ShootingMath.shooterRPSForDistance(targetDist);
     }
@@ -212,7 +201,7 @@ public class RobotContainer {
 
         // 2. Override if Passing
         if (turret.getMode() == Turret.Mode.PASSING) {
-            optimal = m_passHoodMap.get(targetDist);
+            optimal = PassingMath.hoodAngleForDistance(targetDist);
         }
         // 3. New Equation 3/20/26 (For Hub Shooting)
         else {
