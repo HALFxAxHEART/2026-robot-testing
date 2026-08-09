@@ -32,6 +32,10 @@ public class Telemetry {
         for (int i = 0; i < 4; ++i) {
             SmartDashboard.putData("Module " + i, m_moduleMechanisms[i]);
         }
+
+        // Never changes -- publish once here instead of every telemeterize() call, which
+        // fires from CTRE's odometry thread and can run well above the 50Hz main loop rate.
+        fieldTypePub.set("Field2d");
     }
 
     /* What to publish over networktables for telemetry */
@@ -92,8 +96,6 @@ public class Telemetry {
         driveOdometryFrequency.set(1.0 / state.OdometryPeriod);
 
         /* Telemeterize the pose to a Field2d */
-        fieldTypePub.set("Field2d");
-
         m_poseArray[0] = state.Pose.getX();
         m_poseArray[1] = state.Pose.getY();
         m_poseArray[2] = state.Pose.getRotation().getDegrees();

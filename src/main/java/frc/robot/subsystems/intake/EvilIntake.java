@@ -177,9 +177,10 @@ public class EvilIntake extends SubsystemBase {
             io.setSpinPercent(kTransitSpinPercent);
         }
 
-        SmartDashboard.putBoolean("Intake HitPoint", hitPoint);
-        SmartDashboard.putNumber("Intake HitPointValue", hitPointValue);
-        // positionRotations is already published via Logger.processInputs above -- no
-        // need to duplicate it through a second NT write.
+        // Logger.recordOutput (not SmartDashboard) so these show up in replay too, same as
+        // EvilIntake/Stalled above -- positionRotations itself is already published via
+        // Logger.processInputs, no need to duplicate it through a second write.
+        Logger.recordOutput("EvilIntake/HitPoint", hitPoint);
+        Logger.recordOutput("EvilIntake/HitPointValue", hitPointValue);
     }
 }

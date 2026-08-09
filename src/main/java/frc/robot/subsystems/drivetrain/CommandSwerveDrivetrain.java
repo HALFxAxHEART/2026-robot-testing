@@ -214,10 +214,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public ChassisSpeeds getChassisSpeeds() {
         return this.getState().Speeds;
     }
+    // Reused every call instead of allocated fresh -- this is PathPlanner's drive-output
+    // callback (see AutonContainer's AutoBuilder.configure), so it runs every control-loop
+    // iteration for the entire duration of any path-following auto command.
+    private final SwerveRequest.ApplyRobotSpeeds m_robotSpeedsRequest = new SwerveRequest.ApplyRobotSpeeds();
+
     /** Drives in robot-centric mode given a ChassisSpeeds containing the desired velocity of the robot */
     public void driveRobotRelative(ChassisSpeeds speeds) {
-        SwerveRequest.ApplyRobotSpeeds drive = new SwerveRequest.ApplyRobotSpeeds();
-        setControl(drive.withSpeeds(speeds));
+        setControl(m_robotSpeedsRequest.withSpeeds(speeds));
     }
 
     /**
