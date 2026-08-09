@@ -52,10 +52,25 @@ public class AutonContainer{
         );
     }
 
+    // evilestyummy()/EvilIntakePiece never finish on their own -- that's correct for
+    // their teleop bindings (.whileTrue() cancels them on button release), but as named
+    // auto commands they need a timeout, or any auto that puts them in a sequential step
+    // or alongside a path in a "parallel" group hangs forever (confirmed: this is exactly
+    // what was happening -- the ParallelCommandGroup holds its drivetrain requirement for
+    // its whole lifetime, so once the path sub-command finished but DriveIntake didn't,
+    // the group never ended and nothing was left driving the drivetrain, which is why the
+    // robot looked stuck instead of continuing to the next auto step).
+    // TODO: 1.5s is a conservative placeholder, not a measured value -- tune this once you
+    // can time how long the intake actually takes to reach `out`/`in` on the real robot.
+    private static final double kIntakeAutonTimeoutSeconds = 1.5;
+
     private void registerNamedCommands() {
-        NamedCommands.registerCommand("DropIntake", robotContainer.evilIntake.evilestyummy(EvilIntakePosition.out));
-        NamedCommands.registerCommand("RaiseIntake", robotContainer.evilIntake.evilestyummy(EvilIntakePosition.in));
-        NamedCommands.registerCommand("DriveIntake", new EvilIntakePiece(robotContainer.evilIntake, EvilIntakePosition.out));
+        NamedCommands.registerCommand("DropIntake",
+            robotContainer.evilIntake.evilestyummy(EvilIntakePosition.out).withTimeout(kIntakeAutonTimeoutSeconds));
+        NamedCommands.registerCommand("RaiseIntake",
+            robotContainer.evilIntake.evilestyummy(EvilIntakePosition.in).withTimeout(kIntakeAutonTimeoutSeconds));
+        NamedCommands.registerCommand("DriveIntake",
+            new EvilIntakePiece(robotContainer.evilIntake, EvilIntakePosition.out).withTimeout(kIntakeAutonTimeoutSeconds));
         NamedCommands.registerCommand("Shoot", robotContainer.fullShootCommand().withTimeout(5));
     }
 
