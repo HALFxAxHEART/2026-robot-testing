@@ -46,6 +46,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
         final Field2d m_field = new Field2d();
+        {
+            // putData registers the Sendable once -- doing it here (runs once per
+            // construction, before any constructor overload's body) instead of every
+            // periodic() call avoids re-doing that NT builder lookup 50x/sec for nothing.
+            SmartDashboard.putData("Field", m_field);
+        }
 
     public Pigeon2 m_pigeon = new Pigeon2(0, jarvis);
 
@@ -248,8 +254,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("robot yaw", getgyroyaw().getDegrees());
-
         // AdvantageKit output logging. This drivetrain is CTRE-generated (TunerSwerveDrivetrain),
         // which doesn't decompose cleanly into the IO-interface pattern used by the other
         // subsystems -- reimplementing its control loop would be a much larger, riskier
@@ -278,12 +282,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 m_hasAppliedOperatorPerspective = true;
             });
         }
-        
-        
-        // field post here
-        m_field.setRobotPose(getPose());
-        SmartDashboard.putData("Field", m_field);
-
+        // field post here -- reuse the `state` fetched above instead of calling
+        // getPose() (which would re-invoke getState() a second time this cycle)
+        m_field.setRobotPose(state.Pose);
     }
 
     private void startSimThread() {

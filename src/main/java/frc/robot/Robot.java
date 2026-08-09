@@ -8,7 +8,6 @@ package frc.robot;
 import com.ctre.phoenix6.HootAutoReplay;
 
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
@@ -103,9 +102,6 @@ public class Robot extends LoggedRobot {
           Logger.recordOutput("Vision/LimelightLeft/AppliedPose", llMeasurementleft.pose);
           Logger.recordOutput("Vision/LimelightLeft/TagCount", llMeasurementleft.tagCount);
         }
-
-      SmartDashboard.putNumber("111 drive pose X", m_robotContainer.drivetrain.getState().Pose.getX());
-      SmartDashboard.putNumber("111 drive pose Y",  m_robotContainer.drivetrain.getState().Pose.getY());
     }
 }
   }

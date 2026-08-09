@@ -154,7 +154,8 @@ public class Turret extends SubsystemBase {
         // --- LIVE MOTOR DATA ---
         io.updateInputs(inputs);
         Logger.processInputs("Turret", inputs);
-        SmartDashboard.putNumber("Turret/Current_Motor_Rots", inputs.positionMotorRotations);
+        // positionMotorRotations is already published via Logger.processInputs above --
+        // no need to duplicate it through a second NT write.
         SmartDashboard.putNumber("Turret/Current_Turret_Rots", inputs.positionMotorRotations / kTurretGearRatio);
 
         // --- SOLVE FOR THE AIM SOLUTION (pure math, see TurretAimCalculator) ---

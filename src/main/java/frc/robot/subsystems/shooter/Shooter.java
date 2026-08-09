@@ -98,7 +98,8 @@ public class Shooter extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Shooter", inputs);
 
-        SmartDashboard.putNumber("Shooter/Velocity_RPS", inputs.velocityRPS);
+        // velocityRPS is already published via Logger.processInputs above -- no need to
+        // duplicate it through a second NT write.
         SmartDashboard.putNumber("Shooter/Target_Velocity_RPS", setpoint);
         SmartDashboard.putBoolean("Shooter/Ready", isShooterReady(2));
     }

@@ -25,6 +25,9 @@ public class EvilIntake extends SubsystemBase {
     public EvilIntake(EvilIntakeIO io, int intakeID){
         this.io = io;
         intakevalueid = intakeID;
+        // Constant for the life of the robot -- publish once here instead of every
+        // periodic() cycle.
+        SmartDashboard.putNumber("Intake ID", intakevalueid);
     }
 
         // Go-go Gadget Move (Makes the Intake Move)
@@ -60,10 +63,10 @@ public class EvilIntake extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("EvilIntake", inputs);
 
-        SmartDashboard.putNumber("Intake ID", intakevalueid);
         SmartDashboard.putBoolean("Intake HitPoint", hitPoint);
         SmartDashboard.putNumber("Intake HitPointValue", hitPointValue);
-        SmartDashboard.putNumber("Intake Position", inputs.positionRotations);
+        // positionRotations is already published via Logger.processInputs above -- no
+        // need to duplicate it through a second NT write.
         /* SmartDashboard.putNumber("Intake Position Degrees", getAngle());
         SmartDashboard.putString("Intake Target Position", pos.name());
         SmartDashboard.putNumber("Intake Target Revolutions", pos.getAngle());

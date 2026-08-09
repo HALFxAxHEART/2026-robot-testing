@@ -98,7 +98,8 @@ public class Hood extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Hood", inputs);
 
-        SmartDashboard.putNumber("Hood Angle", inputs.positionRotations);
+        // positionRotations is already published via Logger.processInputs above -- no
+        // need to duplicate it through a second NT write.
         SmartDashboard.putNumber("Target Angle", setpoint);
     }
 }

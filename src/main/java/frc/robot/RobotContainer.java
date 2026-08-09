@@ -154,7 +154,8 @@ public class RobotContainer {
         // CONTROLLER BUTTONS
         joystick.y().whileTrue(fullShootCommand());
         joystick.b().whileTrue(failsafeShoot());
-        joystick.x().whileTrue(drivetrain.applyRequest(() -> new SwerveRequest.SwerveDriveBrake()));
+        final var brake = new SwerveRequest.SwerveDriveBrake();
+        joystick.x().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.leftBumper().whileTrue(new EvilIntakePiece(evilIntake, EvilIntakePosition.out));
         joystick.start().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric)); 
         
