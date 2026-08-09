@@ -26,12 +26,29 @@ public class EvilIntakeIOSim implements EvilIntakeIO {
     private double setpointRotations = 0.0;
     private double spinPercent = 0.0;
 
+    public EvilIntakeIOSim() {
+        // Start at rest inside the real robot's soft-limit range instead of at 0 (which is
+        // just outside [kReverseSoftLimitRotations, kForwardSoftLimitRotations]).
+        rotationSim.setAngle(EvilIntake.kReverseSoftLimitRotations * 2 * Math.PI);
+    }
+
     @Override
     public void updateInputs(EvilIntakeIOInputs inputs) {
+        double target = MathUtil.clamp(
+            setpointRotations, EvilIntake.kReverseSoftLimitRotations, EvilIntake.kForwardSoftLimitRotations
+        );
         double appliedVolts = MathUtil.clamp(
-            positionController.calculate(rotationSim.getAngularPositionRotations(), setpointRotations),
+            positionController.calculate(rotationSim.getAngularPositionRotations(), target),
             -12.0, 12.0
         );
+
+        // Emulate the real TalonFX's firmware soft limits so sim behaves like the real robot.
+        if (rotationSim.getAngularPositionRotations() >= EvilIntake.kForwardSoftLimitRotations && appliedVolts > 0) {
+            appliedVolts = 0;
+        } else if (rotationSim.getAngularPositionRotations() <= EvilIntake.kReverseSoftLimitRotations && appliedVolts < 0) {
+            appliedVolts = 0;
+        }
+
         rotationSim.setInputVoltage(appliedVolts);
         rotationSim.update(0.02);
 

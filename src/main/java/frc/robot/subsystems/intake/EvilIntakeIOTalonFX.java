@@ -7,7 +7,7 @@ import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import frc.robot.Constants.EvilIntakePosition;
+import frc.robot.util.PhoenixUtil;
 
 /** Real-hardware implementation: rotation TalonFX + spin TalonFX. */
 public class EvilIntakeIOTalonFX implements EvilIntakeIO {
@@ -37,9 +37,9 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         // NOTE: these margins are a guess -- verify against the real hard stops before trusting them,
         // and double check Forward vs Reverse isn't backwards once you confirm motor inversion below.
         intakeConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        intakeConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = EvilIntakePosition.out.getAngle() + 0.5;
+        intakeConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = EvilIntake.kForwardSoftLimitRotations;
         intakeConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        intakeConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = EvilIntakePosition.in.getAngle() - 0.1;
+        intakeConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = EvilIntake.kReverseSoftLimitRotations;
 
         /* intakeConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         intakeConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive; */
@@ -54,11 +54,11 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         // pdvga......................................................!!
 
         // Apply configs to the intake motor
-        intakeMotor.getConfigurator().apply(intakeConfig);
+        PhoenixUtil.tryUntilOk("EvilIntake rotation (CAN " + intakeID + ")", () -> intakeMotor.getConfigurator().apply(intakeConfig));
 
         // --- SPIN MOTOR CONFIGURATION ---
         TalonFXConfiguration spinConfig = new TalonFXConfiguration();
-        spinMotor.getConfigurator().apply(spinConfig);
+        PhoenixUtil.tryUntilOk("EvilIntake spin (CAN " + spinID + ")", () -> spinMotor.getConfigurator().apply(spinConfig));
 
         // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
         // then drop everything else (on both devices) to a minimal rate -- cuts CAN bus

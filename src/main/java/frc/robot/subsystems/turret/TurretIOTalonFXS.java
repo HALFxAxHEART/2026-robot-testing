@@ -8,6 +8,8 @@ import com.ctre.phoenix6.hardware.TalonFXS;
 import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import frc.robot.util.PhoenixUtil;
+
 /** Real-hardware implementation: single TalonFXS (Minion) driving the turret ring gear. */
 public class TurretIOTalonFXS implements TurretIO {
     private final TalonFXS m_turretMotor;
@@ -27,7 +29,7 @@ public class TurretIOTalonFXS implements TurretIO {
         config.MotionMagic.MotionMagicAcceleration = 60.0;
         config.MotionMagic.MotionMagicJerk = 1600.0;
 
-        m_turretMotor.getConfigurator().apply(config);
+        PhoenixUtil.tryUntilOk("Turret (CAN 16)", () -> m_turretMotor.getConfigurator().apply(config));
         m_turretMotor.setPosition(0);
 
         // Only broadcast the signals updateInputs() actually reads, at the main loop rate,

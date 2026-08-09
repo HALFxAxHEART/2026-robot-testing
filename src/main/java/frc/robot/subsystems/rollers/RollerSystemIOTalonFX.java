@@ -10,6 +10,8 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import frc.robot.util.PhoenixUtil;
+
 /** Real-hardware implementation: floor roller (leader) + 2 belt motors (followers). */
 public class RollerSystemIOTalonFX implements RollerSystemIO {
     private final TalonFX rollerFloor;
@@ -27,9 +29,9 @@ public class RollerSystemIOTalonFX implements RollerSystemIO {
         Slot0Configs rollerConfig = new Slot0Configs();
         rollerConfig.kP = 2;
 
-        rollerFloor.getConfigurator().apply(rollerConfig);
-        lowerBelt.getConfigurator().apply(rollerConfig);
-        upperBelt.getConfigurator().apply(rollerConfig);
+        PhoenixUtil.tryUntilOk("Roller floor (CAN 13)", () -> rollerFloor.getConfigurator().apply(rollerConfig));
+        PhoenixUtil.tryUntilOk("Roller lower belt (CAN 21)", () -> lowerBelt.getConfigurator().apply(rollerConfig));
+        PhoenixUtil.tryUntilOk("Roller upper belt (CAN 22)", () -> upperBelt.getConfigurator().apply(rollerConfig));
 
         // Set to Brake mode so they stop instantly when power is cut
         rollerFloor.setNeutralMode(NeutralModeValue.Brake);

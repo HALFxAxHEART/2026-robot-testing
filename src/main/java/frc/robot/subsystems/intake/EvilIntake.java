@@ -9,6 +9,12 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.EvilIntakePosition;
 
 public class EvilIntake extends SubsystemBase {
+     // Same margins EvilIntakeIOTalonFX configures as firmware soft limits -- kept here as
+     // the single source of truth so EvilIntakeIOSim can obey the same limits as the real
+     // robot instead of duplicating (and risking drifting from) these numbers.
+     public static final double kForwardSoftLimitRotations = EvilIntakePosition.out.getAngle() + 0.5;
+     public static final double kReverseSoftLimitRotations = EvilIntakePosition.in.getAngle() - 0.1;
+
      private final EvilIntakeIO io;
      private final EvilIntakeIOInputsAutoLogged inputs = new EvilIntakeIOInputsAutoLogged();
 

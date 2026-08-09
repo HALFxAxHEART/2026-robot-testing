@@ -10,6 +10,8 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import frc.robot.util.PhoenixUtil;
+
 /** Real-hardware implementation: 2 opposed TalonFX, lead + follower. */
 public class ShooterIOTalonFX implements ShooterIO {
     private final TalonFX leadShoot;
@@ -34,11 +36,11 @@ public class ShooterIOTalonFX implements ShooterIO {
         shooterConfig.Slot0.kV = 0.145;
         shooterConfig.Slot0.kS = 0.0;
 
-        leadShoot.getConfigurator().apply(shooterConfig);
+        PhoenixUtil.tryUntilOk("Shooter lead (CAN 27)", () -> leadShoot.getConfigurator().apply(shooterConfig));
 
         TalonFXConfiguration shooterfollowConfig = new TalonFXConfiguration();
         shooterfollowConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        followShoot.getConfigurator().apply(shooterfollowConfig);
+        PhoenixUtil.tryUntilOk("Shooter follower (CAN 15)", () -> followShoot.getConfigurator().apply(shooterfollowConfig));
         followShoot.setControl(new Follower(27, MotorAlignmentValue.Opposed));
 
         // Only broadcast the signals updateInputs() actually reads, at the main loop rate,

@@ -9,6 +9,8 @@ import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import frc.robot.util.PhoenixUtil;
+
 /** Real-hardware implementation: single TalonFX. */
 public class HoodIOTalonFX implements HoodIO {
     private final TalonFX hood;
@@ -30,11 +32,11 @@ public class HoodIOTalonFX implements HoodIO {
         hoodConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
         hoodConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Hood.kMaxExtensionRotations;
 
-        hood.getConfigurator().apply(hoodConfig);
+        PhoenixUtil.tryUntilOk("Hood (CAN 20)", () -> hood.getConfigurator().apply(hoodConfig));
 
         Slot0Configs hoodPID = new Slot0Configs();
         hoodPID.kP = 2;
-        hood.getConfigurator().apply(hoodPID);
+        PhoenixUtil.tryUntilOk("Hood (CAN 20) PID", () -> hood.getConfigurator().apply(hoodPID));
 
         // Only broadcast the signals updateInputs() actually reads, at the main loop rate,
         // then drop everything else to a minimal rate -- cuts CAN bus load instead of every
