@@ -1,17 +1,19 @@
 package frc.robot.commands;
 
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.EvilIntakePosition;
 import frc.robot.subsystems.intake.EvilIntake;
 
+/**
+ * Deploys the intake to evilPos and keeps the rollers spinning the entire time this command
+ * is active -- no delay before spinning up anymore, because a piece can jam the mechanism if
+ * the rollers are idle while the arm is still swinging through it (EvilIntake.periodic()
+ * also spins the rollers automatically during transit for the same reason, so this really
+ * just covers the "already arrived, keep intaking" portion).
+ */
 public class EvilIntakePiece extends Command{
-    /** Give the intake this long to rotate out before we spin the rollers. */
-    private static final double kSpinDelaySeconds = 0.125;
-
     EvilIntake evilIntake;
     EvilIntakePosition evilTarget;
-    private final Timer timer = new Timer();
 
     public EvilIntakePiece(EvilIntake evilIntake, EvilIntakePosition evilPos){
         this.evilIntake = evilIntake;
@@ -23,15 +25,12 @@ public class EvilIntakePiece extends Command{
     @Override
     public void initialize() {
         evilIntake.evilyummy(evilTarget);
-        timer.restart();
     }
 
     // Called every time the scheduler runs while the command is scheduled.
     @Override
     public void execute() {
-        if (timer.hasElapsed(kSpinDelaySeconds)) {
-            evilIntake.evileryummy(-1);
-        }
+        evilIntake.evileryummy(-1);
     }
 
     // Called once the command ends or is interrupted.

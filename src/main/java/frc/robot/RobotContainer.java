@@ -25,6 +25,7 @@ import frc.robot.Constants.EvilIntakePosition;
 import frc.robot.commands.AutonContainer;
 import frc.robot.commands.EvilIntakePiece;
 import frc.robot.commands.FeedWhenReady;
+import frc.robot.commands.FunnelAgitate;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.hood.Hood;
@@ -134,6 +135,13 @@ public class RobotContainer {
         // --- CONTINUOUS TRACKING ---
         // This makes the turret run passOrShoot() continuously whenever no other command is using it.
         turret.setDefaultCommand(turret.run(turret::passOrShoot));
+
+        // Whenever nothing else is using the intake (not collecting via EvilIntakePiece, no
+        // auto step driving it) and a shot is actually being commanded, gently agitate it to
+        // help funnel fuel in. Requiring evilIntake means this automatically pauses the
+        // instant EvilIntakePiece/an auto command claims the subsystem, and resumes the
+        // instant that ends -- no extra "am I intaking" bookkeeping needed here.
+        evilIntake.setDefaultCommand(new FunnelAgitate(evilIntake, shooter::isCommanded));
 
         final var idle = new SwerveRequest.Idle();
         RobotModeTriggers.disabled().whileTrue(drivetrain.applyRequest(() -> idle).ignoringDisable(true));

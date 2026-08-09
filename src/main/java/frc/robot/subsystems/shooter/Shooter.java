@@ -50,6 +50,13 @@ public class Shooter extends SubsystemBase {
         return Math.abs(inputs.velocityRPS - setpoint) <= range;
     }
 
+    /** @return True while a real shot is being commanded (goShoot() with a nonzero RPS is
+     * active) -- i.e. fullShootCommand()/failsafeShoot() is currently running. Used to gate
+     * FunnelAgitate: no reason to agitate the intake when nobody's trying to shoot. */
+    public boolean isCommanded() {
+        return setpoint != 0.0;
+    }
+
     /** Updates the targetRPS and sends it to the shooter */
     public void goShoot(double RPS) {
         this.setpoint = RPS;

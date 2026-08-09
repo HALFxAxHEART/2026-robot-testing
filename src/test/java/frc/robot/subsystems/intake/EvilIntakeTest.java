@@ -15,6 +15,7 @@ class EvilIntakeTest {
         double positionRotations = EvilIntake.kReverseSoftLimitRotations;
         double statorCurrentAmps = 0.0;
         double lastCommandedPositionRotations = Double.NaN;
+        double lastCommandedSpinPercent = Double.NaN;
 
         @Override
         public void updateInputs(EvilIntakeIOInputs inputs) {
@@ -26,6 +27,11 @@ class EvilIntakeTest {
         @Override
         public void setRotationPosition(double positionRotations) {
             lastCommandedPositionRotations = positionRotations;
+        }
+
+        @Override
+        public void setSpinPercent(double percent) {
+            lastCommandedSpinPercent = percent;
         }
     }
 
@@ -45,6 +51,13 @@ class EvilIntakeTest {
     @Test
     void stalledWhenHighCurrentAndFarFromTarget() {
         assertTrue(EvilIntake.isStallCondition(30.0, 5.0, EvilIntakePosition.out.getAngle()));
+    }
+
+    @Test
+    void stalledWorksInTheRetractingDirectionToo() {
+        // Target (in) is LESS than current position -- a ball jammed partway through
+        // retraction, not the extending-toward-a-wall case.
+        assertTrue(EvilIntake.isStallCondition(30.0, 8.0, EvilIntakePosition.in.getAngle()));
     }
 
     // --- Full periodic()-driven behavior, through a fake IO. Uses real sleeps since the
@@ -116,5 +129,47 @@ class EvilIntakeTest {
         Thread.sleep(300);
         intake.periodic();
         assertFalse(intake.isStalled());
+    }
+
+    @Test
+    void inDirectionStallDoesNotAutoRetractOrBlockGoingOutAfterward() throws InterruptedException {
+        // A jammed game piece while retracting is NOT the same failure mode as hitting a
+        // wall while extending -- EvilIntake must leave this one for FunnelAgitate to react
+        // to, not silently force it back toward `in` (which is where it's already headed)
+        // or block a subsequent evilyummy(out) call the way the wall-hit case does.
+        FakeEvilIntakeIO io = new FakeEvilIntakeIO();
+        EvilIntake intake = new EvilIntake(io, 0);
+
+        io.positionRotations = 8.0;
+        io.statorCurrentAmps = 30.0;
+        intake.evilyummy(EvilIntakePosition.in);
+
+        runPeriodicUntil(intake, intake::isStalled);
+        assertTrue(intake.isStalled());
+
+        // periodic() must NOT have redirected hitPointValue away from `in` on its own.
+        assertEquals(EvilIntakePosition.in.getAngle(), io.lastCommandedPositionRotations, 1e-9);
+
+        // A caller asking for `out` (e.g. FunnelAgitate backing off) must go through
+        // unredirected -- this is exactly the case the wall-hit redirect must NOT catch.
+        intake.evilyummy(EvilIntakePosition.out);
+        assertEquals(EvilIntakePosition.out.getAngle(), io.lastCommandedPositionRotations, 1e-9);
+    }
+
+    @Test
+    void spinsRollersWhileInTransitAndStopsForcingThemOnceArrived() {
+        FakeEvilIntakeIO io = new FakeEvilIntakeIO();
+        EvilIntake intake = new EvilIntake(io, 0);
+
+        io.positionRotations = 5.0; // nowhere near `out` (17) yet
+        intake.evilyummy(EvilIntakePosition.out);
+        intake.periodic();
+        assertTrue(io.lastCommandedSpinPercent < 0, "rollers should be spinning while in transit");
+
+        io.lastCommandedSpinPercent = Double.NaN;
+        io.positionRotations = EvilIntakePosition.out.getAngle(); // arrived
+        intake.periodic();
+        assertTrue(Double.isNaN(io.lastCommandedSpinPercent),
+            "periodic() shouldn't touch the rollers once arrived -- that's the active command's job");
     }
 }

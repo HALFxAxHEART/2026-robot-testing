@@ -116,6 +116,19 @@ Java math with no I/O, which is why it already has unit tests instead.
   logged as `EvilIntake/Stalled` (a derived output, not a raw input) once the debounced
   check trips
 
+`EvilIntake.periodic()` also owns two behaviors that apply no matter which command is
+driving it (button, auto, or the default command below): it forces the rollers to spin
+any time the rotation mechanism hasn't reached its commanded target yet (prevents jamming
+a piece mid-swing), and it auto-retracts on a stall detected specifically while heading
+toward `out` (a wall/robot hit) -- a stall while heading toward `in` (a jammed piece while
+retracting) is deliberately left alone for `FunnelAgitate` to react to.
+
+`EvilIntake`'s default command is `FunnelAgitate` (`commands/FunnelAgitate.java`):
+whenever nothing else claims the intake and a shot is actively being commanded
+(`Shooter.isCommanded()`), it cycles the rack between `in`/`out` to help funnel fuel in,
+backing off toward `out` instead of forcing it the moment `EvilIntake.isStalled()` reports
+it can't pull in any further.
+
 ### `RollerSystem/` (via `RollerSystemIOInputs`)
 - `floorVelocityRPS`, `floorAppliedVolts` (the two belt followers aren't logged
   separately since they always mirror the floor roller)
