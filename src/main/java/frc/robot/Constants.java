@@ -1,8 +1,6 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.RobotConfig;
@@ -41,31 +39,14 @@ public class Constants {
 
 /* -------------- DRIVETRAIN CONSTANTS -------------- */
 
-    public static final class DriveConstants {
-        /** Translation instructions closer to 0 than the deadband will be set to 0 */
-        public static final double TRANSLATION_DEADBAND = .05;
-        /** Rotation instructions closer to 0 than the deadband will be set to 0 */
-        public static final double ROTATION_DEADBAND = .05;
-
-        /** Higher values make the robot drive more aggressively */
-        public static final double TRANSLATION_SLEW = 4;
-        /** Higher values make the robot spin more aggressively */
-        public static final double ROTATION_SLEW = 6;
-
-        /** The maximum allowed driving speed of the robot */
-        public static final double MAX_TRANSLATION_SPEED = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-        /** The maximum allowed spinning speed of the robot */
-        public static final double MAX_ROTATION_SPEED = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
-    }
-
     public static final class PathPlannerConfigs {
         private static final DCMotor DRIVE_MOTOR = 
             new DCMotor(12.6, 5, 40, 20, 5, 1);
             
-        private static final ModuleConfig MODULE_CONFIG = 
+        private static final ModuleConfig MODULE_CONFIG =
             new ModuleConfig(
-                SwerveConstants.ModuleConstants.WHEEL_DIAMETER / 2, 
-                DriveConstants.MAX_TRANSLATION_SPEED, 
+                SwerveConstants.ModuleConstants.WHEEL_DIAMETER / 2,
+                TunerConstants.kSpeedAt12Volts.in(MetersPerSecond),
                 1, DRIVE_MOTOR, 60, 1
             );
 
