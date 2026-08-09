@@ -112,6 +112,9 @@ Java math with no I/O, which is why it already has unit tests instead.
 - `positionRotations` (mechanism position), `rotorPositionRotations` (raw rotor, what
   `getAngle()` returns -- these differ if there's an internal gear ratio)
 - `spinAppliedPercent`
+- `statorCurrentAmps` -- feeds stall detection (see `EvilIntake.isStallCondition`); also
+  logged as `EvilIntake/Stalled` (a derived output, not a raw input) once the debounced
+  check trips
 
 ### `RollerSystem/` (via `RollerSystemIOInputs`)
 - `floorVelocityRPS`, `floorAppliedVolts` (the two belt followers aren't logged

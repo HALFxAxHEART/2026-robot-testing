@@ -10,6 +10,8 @@ public interface EvilIntakeIO {
         public double positionRotations = 0.0;
         public double rotorPositionRotations = 0.0;
         public double spinAppliedPercent = 0.0;
+        /** Rotation motor's stator current -- used for stall detection, see EvilIntake. */
+        public double statorCurrentAmps = 0.0;
     }
 
     /** Updates the set of loggable inputs. */

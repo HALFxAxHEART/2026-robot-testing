@@ -27,9 +27,17 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         // 1. Set to Coast Mode
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
 
-        // 2. Current limit so it gives up when hit instead of stalling into something/someone.
-        // NOTE: comment used to say "5 Amps" but this was set to 40 -- flagging in case 40A
-        // wasn't actually intended; confirm against what you want it to do when it hits a piece/finger.
+        // 2. Hard ceiling on motor current -- purely electrical protection, caps torque
+        // output so the motor/breaker survive a stall, doesn't change what the mechanism
+        // does. NOTE: comment used to say "5 Amps" but this was set to 40 -- flagging in
+        // case 40A wasn't actually intended; confirm against what you want it to do when
+        // it hits a piece/finger.
+        //
+        // Separately, EvilIntake.kStallCurrentAmps (25A, well under this 40A ceiling) is
+        // the BEHAVIORAL stall-detection threshold that triggers auto-retract -- see
+        // EvilIntake.isStallCondition(). This limit here still needs to sit above that,
+        // since the motor should be free to actually draw stall-detection-level current
+        // rather than get capped before ever reaching it.
         intakeConfig.CurrentLimits.StatorCurrentLimit = 40.0;
         intakeConfig.CurrentLimits.StatorCurrentLimitEnable = true;
 
@@ -65,7 +73,8 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         // load instead of every signal defaulting to this device's much higher rate.
         BaseStatusSignal.setUpdateFrequencyForAll(50.0,
             intakeMotor.getPosition(),
-            intakeMotor.getRotorPosition());
+            intakeMotor.getRotorPosition(),
+            intakeMotor.getStatorCurrent());
         intakeMotor.optimizeBusUtilization();
         spinMotor.optimizeBusUtilization();
     }
@@ -75,6 +84,7 @@ public class EvilIntakeIOTalonFX implements EvilIntakeIO {
         inputs.positionRotations = intakeMotor.getPosition().getValueAsDouble();
         inputs.rotorPositionRotations = intakeMotor.getRotorPosition().getValueAsDouble();
         inputs.spinAppliedPercent = spinMotor.get();
+        inputs.statorCurrentAmps = intakeMotor.getStatorCurrent().getValueAsDouble();
     }
 
     @Override

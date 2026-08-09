@@ -55,6 +55,7 @@ public class EvilIntakeIOSim implements EvilIntakeIO {
         inputs.positionRotations = rotationSim.getAngularPositionRotations();
         inputs.rotorPositionRotations = rotationSim.getAngularPositionRotations();
         inputs.spinAppliedPercent = spinPercent;
+        inputs.statorCurrentAmps = Math.abs(rotationSim.getCurrentDrawAmps());
     }
 
     @Override
