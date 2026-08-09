@@ -63,8 +63,13 @@ public class Turret extends SubsystemBase {
     private final double kMaxTurretRotations = 0.30; //0.48
 
     // --- FIELD DIMENSIONS ---
+    // TODO: placeholders (generic FRC field size) -- swap for real "Rebuilt" field
+    // drawings once available; zone/net math below depends on these being accurate.
     private static final double kFieldLengthMeters = 16.54;
     private static final double kFieldWidthMeters = 8.21;
+
+    // How far a pass must stay from the hub's Y-line so it doesn't fly into the net
+    // structure around the hub. Used by TurretAimCalculator.solvePassing().
     private static final double kDangerZoneClearanceMeters = 1.5;
     private static final double kEstimatedShotSpeedMPS = 6.0;
 

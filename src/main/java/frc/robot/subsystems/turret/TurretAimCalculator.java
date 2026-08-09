@@ -41,7 +41,12 @@ public final class TurretAimCalculator {
 
     private TurretAimCalculator() {}
 
-    /** @return The aim solution for the current pose/alliance/velocity, choosing SHOOTING or PASSING by field zone. */
+    /**
+     * @return The aim solution for the current pose/alliance/velocity. On your own half of
+     * the field this shoots at the hub (SHOOTING); at midfield or in the opponent's half it
+     * instead passes fuel back toward your own zone (PASSING), steering the pass around the
+     * net near the hub so it doesn't fly into it.
+     */
     public static AimSolution solve(Config cfg, Pose2d robotPose, boolean isRedAlliance, ChassisSpeeds robotVelocity) {
         double fieldMidpointX = cfg.fieldLengthMeters() / 2.0;
         double hubCenterY = cfg.fieldWidthMeters() / 2.0;
@@ -65,6 +70,9 @@ public final class TurretAimCalculator {
         double passTargetX = isRedAlliance ? cfg.fieldLengthMeters() : 0.0;
         double passTargetY = robotPose.getY();
 
+        // If a straight pass at the robot's current Y would cross through the net around
+        // the hub, shift the aim point to the nearer clear side instead -- this is what
+        // keeps passes from flying into the net instead of over/around it.
         if (Math.abs(robotPose.getY() - hubCenterY) < cfg.dangerZoneClearanceMeters()) {
             passTargetY = (robotPose.getY() >= hubCenterY)
                 ? hubCenterY + cfg.dangerZoneClearanceMeters()
